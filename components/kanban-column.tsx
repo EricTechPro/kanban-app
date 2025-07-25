@@ -1,5 +1,10 @@
 "use client";
 
+import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import {
   Card,
   CardContent,
@@ -36,6 +41,14 @@ export function KanbanColumnComponent({
   onMoveDeal,
   onDeleteDeal,
 }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+    data: {
+      type: "column",
+      column,
+    },
+  });
+
   const getColumnColor = (
     columnId: KanbanColumn["id"]
   ) => {
@@ -90,11 +103,48 @@ export function KanbanColumnComponent({
     );
   };
 
+  const getDropZoneColor = (
+    columnId: KanbanColumn["id"]
+  ) => {
+    const colors = {
+      prospecting: "border-blue-400 bg-blue-100",
+      "initial-contact":
+        "border-yellow-400 bg-yellow-100",
+      negotiation:
+        "border-orange-400 bg-orange-100",
+      "contract-sent":
+        "border-purple-400 bg-purple-100",
+      "contract-signed":
+        "border-indigo-400 bg-indigo-100",
+      "content-creation":
+        "border-green-400 bg-green-100",
+      "content-review":
+        "border-teal-400 bg-teal-100",
+      published:
+        "border-emerald-400 bg-emerald-100",
+      completed: "border-gray-400 bg-gray-100",
+    };
+    return (
+      colors[columnId] ||
+      "border-gray-400 bg-gray-100"
+    );
+  };
+
+  const dealIds = column.deals.map(
+    (deal) => deal.id
+  );
+
   return (
     <Card
-      className={`w-80 flex-shrink-0 ${getColumnColor(
+      className={`w-80 flex-shrink-0 transition-all ${getColumnColor(
         column.id
-      )}`}
+      )} ${
+        isOver
+          ? `border-2 ${getDropZoneColor(
+              column.id
+            )}`
+          : ""
+      }`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
@@ -146,21 +196,37 @@ export function KanbanColumnComponent({
 
       <CardContent className="pt-0">
         <ScrollArea className="h-[calc(100vh-300px)]">
-          <div className="space-y-3">
-            {column.deals.map((deal) => (
-              <DealCard
-                key={deal.id}
-                deal={deal}
-                onEdit={onEditDeal}
-                onMove={onMoveDeal}
-                onDelete={onDeleteDeal}
-              />
-            ))}
+          <div
+            ref={setNodeRef}
+            className={`space-y-3 min-h-[200px] p-2 rounded-lg transition-all ${
+              isOver
+                ? `${getDropZoneColor(
+                    column.id
+                  )} border-2 border-dashed`
+                : ""
+            }`}
+          >
+            <SortableContext
+              items={dealIds}
+              strategy={
+                verticalListSortingStrategy
+              }
+            >
+              {column.deals.map((deal) => (
+                <DealCard
+                  key={deal.id}
+                  deal={deal}
+                  onEdit={onEditDeal}
+                  onMove={onMoveDeal}
+                  onDelete={onDeleteDeal}
+                />
+              ))}
+            </SortableContext>
 
             {/* Add New Deal Button */}
             <Button
               variant="outline"
-              className="w-full h-20 border-2 border-dashed border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-600 flex flex-col items-center justify-center space-y-1 bg-transparent hover:bg-gray-50"
+              className="w-full h-20 border-2 border-dashed border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-600 flex flex-col items-center justify-center space-y-1 bg-transparent hover:bg-gray-50 mt-4"
               onClick={() =>
                 onAddDeal?.(column.id)
               }
@@ -170,6 +236,21 @@ export function KanbanColumnComponent({
                 Add Deal
               </span>
             </Button>
+
+            {/* Drop zone indicator when dragging over empty column */}
+            {isOver &&
+              column.deals.length === 0 && (
+                <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-400 rounded-lg bg-gray-50">
+                  <div className="text-center">
+                    <div className="text-gray-500 text-sm font-medium">
+                      Drop deal here
+                    </div>
+                    <div className="text-gray-400 text-xs">
+                      Move to {column.title}
+                    </div>
+                  </div>
+                </div>
+              )}
           </div>
         </ScrollArea>
       </CardContent>

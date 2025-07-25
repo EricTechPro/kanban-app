@@ -1,6 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  closestCorners,
+} from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,17 +28,12 @@ import {
 import { TopNavigation } from "@/components/top-navigation";
 import { DashboardStatsBar } from "@/components/dashboard-stats";
 import { KanbanColumnComponent } from "@/components/kanban-column";
+import { DealCard } from "@/components/deal-card";
 import { AddDealModal } from "@/components/add-deal-modal";
-import {
-  Deal,
-  KanbanColumn,
-  KanbanStage,
-} from "@/lib/types";
-import {
-  mockUser,
-  kanbanColumns as initialColumns,
-  dashboardStats,
-} from "@/lib/mock-data";
+import { MoveDealModal } from "@/components/move-deal-modal";
+import { Deal, KanbanStage } from "@/lib/types";
+import { useKanban } from "@/lib/kanban-context";
+import { mockUser } from "@/lib/mock-data";
 import {
   Grid,
   List,
@@ -37,17 +44,32 @@ import {
 } from "lucide-react";
 
 export function Dashboard() {
-  const [columns, setColumns] = useState<
-    KanbanColumn[]
-  >(initialColumns);
+  const {
+    state,
+    moveDeal,
+    addDeal,
+    updateDeal,
+    deleteDeal,
+    bulkMoveDeals,
+    bulkDeleteDeals,
+    reorderDeals,
+    getAllDeals,
+  } = useKanban();
+
   const [
     isAddDealModalOpen,
     setIsAddDealModalOpen,
   ] = useState(false);
   const [
+    isMoveDealModalOpen,
+    setIsMoveDealModalOpen,
+  ] = useState(false);
+  const [
     selectedDealStage,
     setSelectedDealStage,
   ] = useState<KanbanStage>("prospecting");
+  const [dealToMove, setDealToMove] =
+    useState<Deal | null>(null);
   const [viewMode, setViewMode] = useState<
     "board" | "list" | "calendar"
   >("board");
@@ -55,6 +77,8 @@ export function Dashboard() {
     useState<string[]>([]);
   const [selectAll, setSelectAll] =
     useState(false);
+  const [activeDeal, setActiveDeal] =
+    useState<Deal | null>(null);
 
   // Filter states
   const [searchQuery, setSearchQuery] =
@@ -67,6 +91,133 @@ export function Dashboard() {
     useState<{ from: Date; to: Date } | null>(
       null
     );
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragStart = (
+    event: DragStartEvent
+  ) => {
+    const { active } = event;
+    const deal = state.columns
+      .flatMap((col) => col.deals)
+      .find((d) => d.id === active.id);
+
+    if (deal) {
+      setActiveDeal(deal);
+    }
+  };
+
+  const handleDragOver = (
+    event: DragOverEvent
+  ) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    // Find the active deal
+    const activeDeal = state.columns
+      .flatMap((col) => col.deals)
+      .find((d) => d.id === activeId);
+
+    if (!activeDeal) return;
+
+    // Check if we're dropping over a column
+    const overColumn = state.columns.find(
+      (col) => col.id === overId
+    );
+
+    if (
+      overColumn &&
+      activeDeal.stage !== overColumn.id
+    ) {
+      // Move deal to different column
+      moveDeal(
+        activeId as string,
+        activeDeal.stage,
+        overColumn.id
+      );
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    setActiveDeal(null);
+
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    // Find the active deal
+    const activeDeal = state.columns
+      .flatMap((col) => col.deals)
+      .find((d) => d.id === activeId);
+
+    if (!activeDeal) return;
+
+    // Check if we're dropping over a column
+    const overColumn = state.columns.find(
+      (col) => col.id === overId
+    );
+
+    if (
+      overColumn &&
+      activeDeal.stage !== overColumn.id
+    ) {
+      // Move deal to different column
+      moveDeal(
+        activeId as string,
+        activeDeal.stage,
+        overColumn.id
+      );
+      return;
+    }
+
+    // Check if we're reordering within the same column
+    const overDeal = state.columns
+      .flatMap((col) => col.deals)
+      .find((d) => d.id === overId);
+
+    if (
+      overDeal &&
+      activeDeal.stage === overDeal.stage
+    ) {
+      const column = state.columns.find(
+        (col) => col.id === activeDeal.stage
+      );
+      if (column) {
+        const oldIndex = column.deals.findIndex(
+          (d) => d.id === activeId
+        );
+        const newIndex = column.deals.findIndex(
+          (d) => d.id === overId
+        );
+
+        if (oldIndex !== newIndex) {
+          reorderDeals(
+            activeDeal.stage,
+            oldIndex,
+            newIndex
+          );
+        }
+      }
+    }
+  };
 
   const handleAddDeal = (stage?: KanbanStage) => {
     if (stage) {
@@ -107,37 +258,40 @@ export function Dashboard() {
       updatedAt: new Date(),
     };
 
-    setColumns((prevColumns) =>
-      prevColumns.map((column) =>
-        column.id === newDeal.stage
-          ? {
-              ...column,
-              deals: [...column.deals, newDeal],
-            }
-          : column
-      )
-    );
+    addDeal(newDeal, newDeal.stage);
   };
 
   const handleEditDeal = (deal: Deal) => {
     console.log("Edit deal:", deal);
-    // TODO: Implement edit functionality
+    // TODO: Implement edit modal
   };
 
   const handleMoveDeal = (deal: Deal) => {
-    console.log("Move deal:", deal);
-    // TODO: Implement move functionality
+    setDealToMove(deal);
+    setIsMoveDealModalOpen(true);
+  };
+
+  const handleMoveDealToStage = (
+    toStage: KanbanStage
+  ) => {
+    if (dealToMove) {
+      moveDeal(
+        dealToMove.id,
+        dealToMove.stage,
+        toStage
+      );
+      setDealToMove(null);
+    }
   };
 
   const handleDeleteDeal = (deal: Deal) => {
-    setColumns((prevColumns) =>
-      prevColumns.map((column) => ({
-        ...column,
-        deals: column.deals.filter(
-          (d) => d.id !== deal.id
-        ),
-      }))
-    );
+    if (
+      confirm(
+        `Are you sure you want to delete "${deal.title}"?`
+      )
+    ) {
+      deleteDeal(deal.id);
+    }
   };
 
   const handleSearch = (query: string) => {
@@ -170,9 +324,8 @@ export function Dashboard() {
     if (selectAll) {
       setSelectedDeals([]);
     } else {
-      const allDealIds = columns.flatMap(
-        (column) =>
-          column.deals.map((deal) => deal.id)
+      const allDealIds = getAllDeals().map(
+        (deal) => deal.id
       );
       setSelectedDeals(allDealIds);
     }
@@ -180,25 +333,44 @@ export function Dashboard() {
   };
 
   const handleBulkMove = () => {
-    console.log(
-      "Bulk move deals:",
-      selectedDeals
-    );
-    // TODO: Implement bulk move
+    if (selectedDeals.length === 0) return;
+
+    // TODO: Show modal to select target stage
+    const targetStage = prompt(
+      "Enter target stage (prospecting, negotiation, etc.):"
+    ) as KanbanStage;
+    if (
+      targetStage &&
+      [
+        "prospecting",
+        "initial-contact",
+        "negotiation",
+        "contract-sent",
+        "contract-signed",
+        "content-creation",
+        "content-review",
+        "published",
+        "completed",
+      ].includes(targetStage)
+    ) {
+      bulkMoveDeals(selectedDeals, targetStage);
+      setSelectedDeals([]);
+      setSelectAll(false);
+    }
   };
 
   const handleBulkDelete = () => {
-    setColumns((prevColumns) =>
-      prevColumns.map((column) => ({
-        ...column,
-        deals: column.deals.filter(
-          (deal) =>
-            !selectedDeals.includes(deal.id)
-        ),
-      }))
-    );
-    setSelectedDeals([]);
-    setSelectAll(false);
+    if (selectedDeals.length === 0) return;
+
+    if (
+      confirm(
+        `Are you sure you want to delete ${selectedDeals.length} deals?`
+      )
+    ) {
+      bulkDeleteDeals(selectedDeals);
+      setSelectedDeals([]);
+      setSelectAll(false);
+    }
   };
 
   const handleExportSelected = () => {
@@ -207,7 +379,7 @@ export function Dashboard() {
   };
 
   // Apply filters to columns
-  const filteredColumns = columns.map(
+  const filteredColumns = state.columns.map(
     (column) => ({
       ...column,
       deals: column.deals.filter((deal) => {
@@ -249,6 +421,30 @@ export function Dashboard() {
     0
   );
 
+  // Calculate dashboard stats
+  const allDeals = getAllDeals();
+  const dashboardStats = {
+    totalDeals: allDeals.length,
+    activeDeals: allDeals.filter(
+      (deal) =>
+        !["completed"].includes(deal.stage)
+    ).length,
+    completedDeals: allDeals.filter(
+      (deal) => deal.stage === "completed"
+    ).length,
+    totalRevenue: allDeals.reduce(
+      (sum, deal) => sum + deal.value,
+      0
+    ),
+    monthlyRevenue: allDeals
+      .filter(
+        (deal) =>
+          deal.createdAt.getMonth() ===
+          new Date().getMonth()
+      )
+      .reduce((sum, deal) => sum + deal.value, 0),
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <TopNavigation
@@ -266,22 +462,42 @@ export function Dashboard() {
           stats={dashboardStats}
         />
 
-        {/* Kanban Board */}
+        {/* Kanban Board with Drag and Drop */}
         <div className="space-y-4">
-          <ScrollArea className="w-full">
-            <div className="flex space-x-4 pb-4">
-              {filteredColumns.map((column) => (
-                <KanbanColumnComponent
-                  key={column.id}
-                  column={column}
-                  onAddDeal={handleAddDeal}
-                  onEditDeal={handleEditDeal}
-                  onMoveDeal={handleMoveDeal}
-                  onDeleteDeal={handleDeleteDeal}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <ScrollArea className="w-full">
+              <div className="flex space-x-4 pb-4">
+                {filteredColumns.map((column) => (
+                  <KanbanColumnComponent
+                    key={column.id}
+                    column={column}
+                    onAddDeal={handleAddDeal}
+                    onEditDeal={handleEditDeal}
+                    onMoveDeal={handleMoveDeal}
+                    onDeleteDeal={
+                      handleDeleteDeal
+                    }
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+
+            {/* Drag Overlay */}
+            <DragOverlay>
+              {activeDeal ? (
+                <DealCard
+                  deal={activeDeal}
+                  isDragging={true}
                 />
-              ))}
-            </div>
-          </ScrollArea>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
 
           {/* Bottom Action Bar */}
           <Card>
@@ -383,6 +599,15 @@ export function Dashboard() {
         }
         onSubmit={handleCreateDeal}
         initialStage={selectedDealStage}
+      />
+
+      <MoveDealModal
+        open={isMoveDealModalOpen}
+        onClose={() =>
+          setIsMoveDealModalOpen(false)
+        }
+        onMove={handleMoveDealToStage}
+        deal={dealToMove}
       />
     </div>
   );

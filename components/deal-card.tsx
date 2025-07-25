@@ -1,5 +1,7 @@
 "use client";
 
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Card,
   CardContent,
@@ -25,6 +27,7 @@ import {
   AlertCircle,
   CheckCircle,
   AlertTriangle,
+  GripVertical,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -33,6 +36,7 @@ interface DealCardProps {
   onEdit?: (deal: Deal) => void;
   onMove?: (deal: Deal) => void;
   onDelete?: (deal: Deal) => void;
+  isDragging?: boolean;
 }
 
 export function DealCard({
@@ -40,7 +44,28 @@ export function DealCard({
   onEdit,
   onMove,
   onDelete,
+  isDragging,
 }: DealCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: sortableIsDragging,
+  } = useSortable({
+    id: deal.id,
+    data: {
+      type: "deal",
+      deal,
+    },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   const formatCurrency = (
     amount: number,
     currency: string
@@ -100,18 +125,54 @@ export function DealCard({
       (1000 * 60 * 60 * 24)
   );
 
+  if (sortableIsDragging) {
+    return (
+      <Card
+        ref={setNodeRef}
+        style={style}
+        className="w-full opacity-50 rotate-3 border-2 border-dashed border-blue-300 bg-blue-50"
+      >
+        <CardContent className="p-4">
+          <div className="h-32 flex items-center justify-center">
+            <div className="text-blue-500 text-sm font-medium">
+              Moving...
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="w-full hover:shadow-md transition-shadow cursor-pointer group">
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className="w-full hover:shadow-md transition-all cursor-pointer group bg-white border border-gray-200 hover:border-gray-300"
+      {...attributes}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <h4 className="font-semibold text-sm leading-tight line-clamp-2">
-            {deal.title}
-          </h4>
+          <div className="flex items-start space-x-2 flex-1">
+            {/* Drag Handle */}
+            <div
+              {...listeners}
+              className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing mt-1"
+            >
+              <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-sm leading-tight line-clamp-2 text-gray-900">
+                {deal.title}
+              </h4>
+            </div>
+          </div>
+
           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-gray-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit?.(deal);
@@ -122,7 +183,7 @@ export function DealCard({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-gray-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onMove?.(deal);
@@ -133,7 +194,7 @@ export function DealCard({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete?.(deal);
@@ -147,7 +208,7 @@ export function DealCard({
         <div className="flex items-center space-x-2 mt-2">
           <Avatar className="h-6 w-6">
             <AvatarImage src={deal.brandLogo} />
-            <AvatarFallback className="text-xs">
+            <AvatarFallback className="text-xs bg-gray-100 text-gray-600">
               {deal.brand
                 .substring(0, 2)
                 .toUpperCase()}
