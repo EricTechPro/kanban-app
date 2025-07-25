@@ -5,7 +5,6 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,6 @@ interface DealCardProps {
   onEdit?: (deal: Deal) => void;
   onMove?: (deal: Deal) => void;
   onDelete?: (deal: Deal) => void;
-  isDragging?: boolean;
 }
 
 export function DealCard({
@@ -44,7 +42,6 @@ export function DealCard({
   onEdit,
   onMove,
   onDelete,
-  isDragging,
 }: DealCardProps) {
   const {
     attributes,

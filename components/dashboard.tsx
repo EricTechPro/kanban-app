@@ -12,8 +12,6 @@ import {
   DragOverlay,
   closestCorners,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
   ToggleGroup,
@@ -31,6 +29,7 @@ import { KanbanColumnComponent } from "@/components/kanban-column";
 import { DealCard } from "@/components/deal-card";
 import { AddDealModal } from "@/components/add-deal-modal";
 import { MoveDealModal } from "@/components/move-deal-modal";
+import { EditDealModal } from "@/components/edit-deal-modal";
 import { Deal, KanbanStage } from "@/lib/types";
 import { useKanban } from "@/lib/kanban-context";
 import { mockUser } from "@/lib/mock-data";
@@ -65,10 +64,16 @@ export function Dashboard() {
     setIsMoveDealModalOpen,
   ] = useState(false);
   const [
+    isEditDealModalOpen,
+    setIsEditDealModalOpen,
+  ] = useState(false);
+  const [
     selectedDealStage,
     setSelectedDealStage,
   ] = useState<KanbanStage>("prospecting");
   const [dealToMove, setDealToMove] =
+    useState<Deal | null>(null);
+  const [dealToEdit, setDealToEdit] =
     useState<Deal | null>(null);
   const [viewMode, setViewMode] = useState<
     "board" | "list" | "calendar"
@@ -262,8 +267,16 @@ export function Dashboard() {
   };
 
   const handleEditDeal = (deal: Deal) => {
-    console.log("Edit deal:", deal);
-    // TODO: Implement edit modal
+    setDealToEdit(deal);
+    setIsEditDealModalOpen(true);
+  };
+
+  const handleUpdateDeal = (
+    dealId: string,
+    updates: Partial<Deal>
+  ) => {
+    updateDeal(dealId, updates);
+    setDealToEdit(null);
   };
 
   const handleMoveDeal = (deal: Deal) => {
@@ -449,7 +462,6 @@ export function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <TopNavigation
         user={mockUser}
-        onAddDeal={() => handleAddDeal()}
         onSearch={handleSearch}
         onFilterStatus={handleFilterStatus}
         onFilterBrand={handleFilterBrand}
@@ -457,141 +469,194 @@ export function Dashboard() {
         onClearFilters={handleClearFilters}
       />
 
-      <div className="p-6">
+      <div className="p-6 space-y-6">
         <DashboardStatsBar
           stats={dashboardStats}
         />
 
-        {/* Kanban Board with Drag and Drop */}
-        <div className="space-y-4">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <ScrollArea className="w-full">
-              <div className="flex space-x-4 pb-4">
-                {filteredColumns.map((column) => (
-                  <KanbanColumnComponent
-                    key={column.id}
-                    column={column}
-                    onAddDeal={handleAddDeal}
-                    onEditDeal={handleEditDeal}
-                    onMoveDeal={handleMoveDeal}
-                    onDeleteDeal={
-                      handleDeleteDeal
-                    }
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-
-            {/* Drag Overlay */}
-            <DragOverlay>
-              {activeDeal ? (
-                <DealCard
-                  deal={activeDeal}
-                  isDragging={true}
-                />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-
-          {/* Bottom Action Bar */}
-          <Card>
-            <CardContent className="py-4">
+        {/* Kanban Board Container */}
+        <Card className="bg-white shadow-sm border border-gray-200">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {/* Board Header */}
               <div className="flex items-center justify-between">
-                {/* Bulk Actions */}
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="select-all"
-                      checked={selectAll}
-                      onCheckedChange={
-                        toggleSelectAll
-                      }
-                    />
-                    <Label
-                      htmlFor="select-all"
-                      className="text-sm"
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Sponsorship Pipeline
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Manage your sponsorship deals
+                    across the entire workflow
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={() =>
+                      handleAddDeal()
+                    }
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Add New Deal
+                  </Button>
+                </div>
+              </div>
+
+              {/* Kanban Board with Drag and Drop */}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={
+                  closestCorners
+                }
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+              >
+                {/* Horizontal Scrollable Container */}
+                <div className="relative">
+                  <div className="kanban-scroll overflow-x-auto overflow-y-hidden">
+                    <div
+                      className="flex space-x-6 pb-4"
+                      style={{
+                        minWidth: "max-content",
+                      }}
                     >
-                      Select All ({totalDeals})
-                    </Label>
+                      {filteredColumns.map(
+                        (column) => (
+                          <KanbanColumnComponent
+                            key={column.id}
+                            column={column}
+                            onAddDeal={
+                              handleAddDeal
+                            }
+                            onEditDeal={
+                              handleEditDeal
+                            }
+                            onMoveDeal={
+                              handleMoveDeal
+                            }
+                            onDeleteDeal={
+                              handleDeleteDeal
+                            }
+                          />
+                        )
+                      )}
+                    </div>
                   </div>
 
-                  {selectedDeals.length > 0 && (
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleBulkMove}
-                      >
-                        <Move className="h-4 w-4 mr-1" />
-                        Move (
-                        {selectedDeals.length})
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleBulkDelete}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete (
-                        {selectedDeals.length})
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={
-                          handleExportSelected
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Export (
-                        {selectedDeals.length})
-                      </Button>
-                    </div>
-                  )}
+                  {/* Scroll Indicator */}
+                  <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none" />
                 </div>
 
-                {/* View Options */}
-                <div className="flex items-center space-x-4">
-                  <ToggleGroup
-                    type="single"
-                    value={viewMode}
-                    onValueChange={(value) =>
-                      value &&
-                      setViewMode(value as any)
+                {/* Drag Overlay */}
+                <DragOverlay>
+                  {activeDeal ? (
+                    <DealCard deal={activeDeal} />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bottom Action Bar */}
+        <Card className="bg-white shadow-sm border border-gray-200">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              {/* Bulk Actions */}
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="select-all"
+                    checked={selectAll}
+                    onCheckedChange={
+                      toggleSelectAll
                     }
+                  />
+                  <Label
+                    htmlFor="select-all"
+                    className="text-sm"
                   >
-                    <ToggleGroupItem
-                      value="board"
-                      aria-label="Board view"
-                    >
-                      <Grid className="h-4 w-4" />
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="list"
-                      aria-label="List view"
-                    >
-                      <List className="h-4 w-4" />
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="calendar"
-                      aria-label="Calendar view"
-                    >
-                      <Calendar className="h-4 w-4" />
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+                    Select All ({totalDeals})
+                  </Label>
                 </div>
+
+                {selectedDeals.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBulkMove}
+                    >
+                      <Move className="h-4 w-4 mr-1" />
+                      Move ({selectedDeals.length}
+                      )
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete (
+                      {selectedDeals.length})
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={
+                        handleExportSelected
+                      }
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Export (
+                      {selectedDeals.length})
+                    </Button>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              {/* View Options */}
+              <div className="flex items-center space-x-4">
+                <ToggleGroup
+                  type="single"
+                  value={viewMode}
+                  onValueChange={(value) =>
+                    value &&
+                    setViewMode(
+                      value as
+                        | "board"
+                        | "list"
+                        | "calendar"
+                    )
+                  }
+                >
+                  <ToggleGroupItem
+                    value="board"
+                    aria-label="Board view"
+                  >
+                    <Grid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="list"
+                    aria-label="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="calendar"
+                    aria-label="Calendar view"
+                  >
+                    <Calendar className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Modals */}
       <AddDealModal
         open={isAddDealModalOpen}
         onClose={() =>
@@ -608,6 +673,15 @@ export function Dashboard() {
         }
         onMove={handleMoveDealToStage}
         deal={dealToMove}
+      />
+
+      <EditDealModal
+        open={isEditDealModalOpen}
+        onClose={() =>
+          setIsEditDealModalOpen(false)
+        }
+        onSubmit={handleUpdateDeal}
+        deal={dealToEdit}
       />
     </div>
   );

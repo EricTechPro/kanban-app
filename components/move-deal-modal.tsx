@@ -107,6 +107,10 @@ export function MoveDealModal({
     setSelectedStage("");
   };
 
+  const handleStageChange = (value: string) => {
+    setSelectedStage(value as KanbanStage);
+  };
+
   if (!deal) return null;
 
   const currentStage = stageOptions.find(
@@ -192,7 +196,7 @@ export function MoveDealModal({
               </Label>
               <Select
                 value={selectedStage}
-                onValueChange={setSelectedStage}
+                onValueChange={handleStageChange}
               >
                 <SelectTrigger id="stage-select">
                   <SelectValue placeholder="Choose a stage..." />

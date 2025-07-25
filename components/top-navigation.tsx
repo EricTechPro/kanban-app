@@ -44,7 +44,6 @@ import { User } from "@/lib/types";
 import {
   Search,
   Bell,
-  Plus,
   Calendar as CalendarIcon,
   Settings,
   HelpCircle,
@@ -56,7 +55,6 @@ import { format } from "date-fns";
 
 interface TopNavigationProps {
   user: User;
-  onAddDeal?: () => void;
   onSearch?: (query: string) => void;
   onFilterStatus?: (status: string) => void;
   onFilterBrand?: (brand: string) => void;
@@ -69,7 +67,6 @@ interface TopNavigationProps {
 
 export function TopNavigation({
   user,
-  onAddDeal,
   onSearch,
   onFilterStatus,
   onFilterBrand,
@@ -368,14 +365,6 @@ export function TopNavigation({
 
         {/* Right Section */}
         <div className="flex items-center space-x-4">
-          <Button
-            onClick={onAddDeal}
-            className="flex items-center space-x-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Deal</span>
-          </Button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
