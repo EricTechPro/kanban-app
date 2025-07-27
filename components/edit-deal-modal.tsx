@@ -69,10 +69,9 @@ const editDealSchema = z.object({
   progress: z.number().min(0).max(100),
   dealType: z.enum([
     "sponsored-video",
-    "product-placement",
-    "brand-mention",
-    "affiliate",
-    "collaboration",
+    "product-review",
+    "brand-integration",
+    "other",
   ]),
   startDate: z.date().optional(),
   contentRequirements: z.string().optional(),
@@ -519,7 +518,7 @@ export function EditDealModal({
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {form.watch("dueDate")
                       ? format(
-                          form.watch("dueDate"),
+                          form.watch("dueDate")!,
                           "PPP"
                         )
                       : "Pick a date"}
@@ -538,7 +537,6 @@ export function EditDealModal({
                         date
                       )
                     }
-                    initialFocus
                   />
                 </PopoverContent>
               </Popover>
@@ -559,7 +557,7 @@ export function EditDealModal({
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {form.watch("startDate")
                       ? format(
-                          form.watch("startDate"),
+                          form.watch("startDate")!,
                           "PPP"
                         )
                       : "Pick a date"}
@@ -577,7 +575,6 @@ export function EditDealModal({
                         date
                       )
                     }
-                    initialFocus
                   />
                 </PopoverContent>
               </Popover>

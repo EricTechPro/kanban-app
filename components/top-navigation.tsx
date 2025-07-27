@@ -337,7 +337,6 @@ export function TopNavigation({
                 align="start"
               >
                 <Calendar
-                  initialFocus
                   mode="range"
                   defaultMonth={dateRange.from}
                   selected={{
@@ -346,6 +345,7 @@ export function TopNavigation({
                   }}
                   onSelect={handleDateRangeSelect}
                   numberOfMonths={2}
+                  required
                 />
               </PopoverContent>
             </Popover>

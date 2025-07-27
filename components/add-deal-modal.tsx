@@ -63,7 +63,6 @@ import {
   Upload,
   File,
   CheckCircle,
-  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -100,7 +99,11 @@ const dealSchema = z.object({
     .min(1, "Primary contact name is required"),
   primaryContactEmail: z
     .string()
-    .email("Invalid email address"),
+    .min(1, "Email is required")
+    .regex(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      "Invalid email address"
+    ),
   primaryContactPhone: z.string().optional(),
   secondaryContactName: z.string().optional(),
   secondaryContactEmail: z.string().optional(),
@@ -292,13 +295,15 @@ export function AddDealModal({
         email: data.primaryContactEmail,
         phone: data.primaryContactPhone,
       },
-      secondaryContact: data.secondaryContactName
-        ? {
-            name: data.secondaryContactName,
-            email: data.secondaryContactEmail,
-            phone: data.secondaryContactPhone,
-          }
-        : undefined,
+      secondaryContact:
+        data.secondaryContactName &&
+        data.secondaryContactEmail
+          ? {
+              name: data.secondaryContactName,
+              email: data.secondaryContactEmail,
+              phone: data.secondaryContactPhone,
+            }
+          : undefined,
       tags: data.tags,
       notes: data.notes,
       progress: 0,
@@ -422,7 +427,11 @@ export function AddDealModal({
             onValueChange={(value) =>
               form.setValue(
                 "dealType",
-                value as any
+                value as
+                  | "sponsored-video"
+                  | "product-review"
+                  | "brand-integration"
+                  | "other"
               )
             }
             defaultValue="sponsored-video"
@@ -470,7 +479,11 @@ export function AddDealModal({
             onValueChange={(value) =>
               form.setValue(
                 "priority",
-                value as any
+                value as
+                  | "low"
+                  | "medium"
+                  | "high"
+                  | "urgent"
               )
             }
             defaultValue="medium"
@@ -536,7 +549,6 @@ export function AddDealModal({
                       date
                     )
                   }
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
@@ -564,9 +576,9 @@ export function AddDealModal({
                   mode="single"
                   selected={form.watch("dueDate")}
                   onSelect={(date) =>
+                    date &&
                     form.setValue("dueDate", date)
                   }
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
@@ -639,7 +651,7 @@ export function AddDealModal({
                 }
                 placeholder="Enter custom deliverable"
                 className="flex-1"
-                onKeyPress={(e) => {
+                onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     addCustomDeliverable();
                   }
