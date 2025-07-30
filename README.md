@@ -100,16 +100,103 @@ A comprehensive kanban board application for managing YouTube sponsorship deals,
 │   ├── add-deal-modal.tsx   # Deal creation modal
 │   ├── dashboard.tsx        # Main dashboard
 │   ├── dashboard-stats.tsx  # Statistics bar
-│   ├── deal-card.tsx        # Individual deal cards
-│   ├── kanban-column.tsx    # Kanban columns
-│   ├── login-page.tsx       # Login interface
-│   └── top-navigation.tsx   # Header navigation
+│   ├── deal-card.tsx        # Deal card component
+│   ├── kanban-column.tsx    # Kanban column
+│   └── login-page.tsx       # Login component
 ├── lib/
-│   ├── types.ts             # TypeScript interfaces
-│   ├── mock-data.ts         # Sample data
+│   ├── api/
+│   │   └── client.ts        # API client
+│   ├── kanban-context.tsx   # Kanban state management
+│   ├── mock-data.ts         # Mock data
+│   ├── types.ts             # TypeScript types
 │   └── utils.ts             # Utility functions
-└── components.json          # shadcn/ui configuration
+└── backend/
+    ├── src/                 # NestJS source code
+    ├── prisma/              # Database schema
+    └── package.json         # Backend dependencies
 ```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- Git
+
+### Quick Start (Recommended)
+
+The easiest way to start the application is using the provided startup scripts:
+
+#### Option 1: Cross-platform (Works on all systems)
+```bash
+npm run start:all
+```
+
+#### Option 2: Platform-specific scripts
+- **macOS/Linux**: `./start.sh` or `npm run start:unix`
+- **Windows**: `start.bat` or `npm run start:windows`
+
+These scripts will automatically:
+- Check prerequisites
+- Install all dependencies
+- Set up environment files
+- Initialize the database
+- Seed the demo user account
+- Start both frontend and backend servers
+
+### Manual Installation
+
+If you prefer to set up manually:
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd youtube-sponsorship-workflow
+   ```
+
+2. **Install frontend dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Install backend dependencies**
+   ```bash
+   cd backend
+   npm install
+   ```
+
+4. **Set up the database**
+   ```bash
+   # In the backend directory
+   npx prisma generate
+   npx prisma migrate dev
+   npx prisma db seed
+   ```
+
+5. **Start the backend server**
+   ```bash
+   # In the backend directory
+   npm run start:dev
+   ```
+
+6. **Start the frontend development server**
+   ```bash
+   # In the root directory
+   npm run dev
+   ```
+
+7. **Access the application**
+   - Open your browser and navigate to `http://localhost:3000`
+   - The backend API will be running on `http://localhost:3001`
+
+### 🔐 Login Credentials
+
+Use the following demo account to log in:
+
+- **Email**: `demo@example.com`
+- **Password**: `demo123`
+
+> **Note**: The signup functionality has been disabled. Only the seeded demo account can be used for authentication.
 
 ## 🎨 Design Features
 

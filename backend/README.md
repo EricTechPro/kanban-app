@@ -53,13 +53,13 @@ cp .env.example .env
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/sponsorship_db"
+DATABASE_URL="file:./dev.db"
 
 # JWT
 JWT_SECRET="your-super-secret-jwt-key"
 JWT_EXPIRATION="24h"
 
-# Google OAuth
+# Google OAuth (optional)
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 GOOGLE_REDIRECT_URI="http://localhost:3001/api/auth/gmail/callback"
@@ -76,7 +76,13 @@ PORT=3001
 ```bash
 npx prisma generate
 npx prisma migrate dev
+npx prisma db seed
 ```
+
+This will create a demo user account:
+
+- **Email**: `demo@example.com`
+- **Password**: `demo123`
 
 ## Running the Application
 
