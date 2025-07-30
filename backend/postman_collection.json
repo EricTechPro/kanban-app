@@ -1,0 +1,394 @@
+{
+  "info": {
+    "name": "YouTube Sponsorship Workflow API",
+    "description": "Postman collection for testing the YouTube Sponsorship Workflow API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"SecurePassword123!\",\n  \"name\": \"Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"SecurePassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Gmail Auth URL",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/auth/gmail/auth-url",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "gmail",
+                "auth-url"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Gmail Status",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/gmail/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "gmail",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deals",
+      "item": [
+        {
+          "name": "Get All Deals",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/deals?stage=negotiation&priority=high",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "deals"
+              ],
+              "query": [
+                {
+                  "key": "stage",
+                  "value": "negotiation"
+                },
+                {
+                  "key": "priority",
+                  "value": "high"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Deal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tech Review - Smartphone X\",\n  \"brand\": \"TechCorp Inc.\",\n  \"value\": 500000,\n  \"currency\": \"USD\",\n  \"dueDate\": \"2024-12-31T23:59:59Z\",\n  \"stage\": \"prospecting\",\n  \"priority\": \"high\",\n  \"tags\": [\"technology\", \"smartphone\", \"review\"],\n  \"notes\": \"Requires unboxing video and 30-day usage review\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/deals",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "deals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Deal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stage\": \"negotiation\",\n  \"priority\": \"urgent\",\n  \"value\": 750000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/deals/:dealId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "deals",
+                ":dealId"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": "123e4567-e89b-12d3-a456-426614174000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Move Deals",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dealIds\": [\"123e4567-e89b-12d3-a456-426614174000\"],\n  \"targetStage\": \"contract_sent\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/deals/move",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "deals",
+                "move"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Analytics Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/deals/analytics/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "deals",
+                "analytics",
+                "summary"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Emails",
+      "item": [
+        {
+          "name": "Get Email Messages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/emails/messages?unread=true&maxResults=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "emails",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "unread",
+                  "value": "true"
+                },
+                {
+                  "key": "maxResults",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"sponsor@company.com\",\n  \"subject\": \"Sponsorship Proposal - Tech Channel\",\n  \"body\": \"<p>Dear Sponsor,</p><p>I would like to propose a sponsorship opportunity...</p>\",\n  \"dealId\": \"123e4567-e89b-12d3-a456-426614174000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/emails/send",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "emails",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Email Templates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/emails/templates?category=outreach",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "emails",
+                "templates"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "outreach"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Email Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Initial Sponsorship Outreach\",\n  \"subject\": \"Partnership Opportunity - {{channelName}}\",\n  \"body\": \"Dear {{brandName}},\\n\\nI run a tech channel with {{subscriberCount}} subscribers...\",\n  \"category\": \"outreach\",\n  \"variables\": {\n    \"channelName\": \"string\",\n    \"brandName\": \"string\",\n    \"subscriberCount\": \"number\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/emails/templates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "emails",
+                "templates"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

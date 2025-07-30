@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TrpcModule } from './trpc/trpc.module';
+import { AuthController } from './controllers/auth.controller';
+import { DealsController } from './controllers/deals.controller';
+import { EmailsController } from './controllers/emails.controller';
 
 @Module({
   imports: [
@@ -12,6 +15,11 @@ import { TrpcModule } from './trpc/trpc.module';
     PrismaModule,
     AuthModule,
     TrpcModule,
+  ],
+  controllers: [
+    AuthController,
+    DealsController,
+    EmailsController,
   ],
 })
 export class AppModule { }
