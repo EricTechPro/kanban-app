@@ -184,14 +184,22 @@ ENCRYPTION_KEY="your-encryption-key-here-change-in-production"`;
     const backendProcess = spawn('npm', ['run', 'start:dev'], {
       cwd: backendPath,
       shell: true,
-      detached: false
+      detached: false,
+      env: {
+        ...process.env,
+        DEMO_PASSWORD: 'demo1234' // Ensure demo password is set
+      }
     });
 
     // Start frontend
     log.info('Starting frontend server...');
     const frontendProcess = spawn('npm', ['run', 'dev'], {
       shell: true,
-      detached: false
+      detached: false,
+      env: {
+        ...process.env,
+        NEXT_PUBLIC_DEMO_PASSWORD: 'demo1234' // Make password available to frontend
+      }
     });
 
     // Wait a bit for services to start

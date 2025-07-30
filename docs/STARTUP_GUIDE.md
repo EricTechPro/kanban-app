@@ -71,7 +71,7 @@ All startup scripts perform the following steps automatically:
 The scripts automatically create a demo user account:
 
 - **Email**: `demo@example.com`
-- **Password**: `demo123`
+- **Password**: `demo1234`
 
 ## 📝 Script Details
 

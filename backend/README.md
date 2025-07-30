@@ -82,7 +82,7 @@ npx prisma db seed
 This will create a demo user account:
 
 - **Email**: `demo@example.com`
-- **Password**: `demo123`
+- **Password**: `demo1234`
 
 ## Running the Application
 

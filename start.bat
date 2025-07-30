@@ -178,6 +178,20 @@ echo Backend API running at: http://localhost:3001
 echo.
 echo Login credentials:
 echo    Email: demo@example.com
+echo    Password: demo1234
+echo.
+echo Logs:
+echo    Frontend: ./frontend.log
+echo    Backend: ./backend.log
+echo.
+echo Press Ctrl+C to stop all services
+echo ========================================
+echo.
+echo Access the application at: http://localhost:3000
+echo Backend API running at: http://localhost:3001
+echo.
+echo Login credentials:
+echo    Email: demo@example.com
 echo    Password: demo123
 echo.
 echo Logs:

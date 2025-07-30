@@ -22,7 +22,7 @@ This document outlines the changes made to implement a simple authentication sys
 - **Created**: New seed script that creates a demo user account
 - **Demo User Credentials**:
   - Email: `demo@example.com`
-  - Password: `demo123`
+  - Password: `demo1234`
 
 #### Authentication Service (`backend/src/auth/auth.service.ts`)
 
@@ -91,7 +91,7 @@ This document outlines the changes made to implement a simple authentication sys
 3. **Login**:
    - Navigate to `http://localhost:3000`
    - Use email: `demo@example.com`
-   - Use password: `demo123`
+   - Use password: `demo1234`
 
 ## Security Notes
 

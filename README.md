@@ -128,15 +128,18 @@ A comprehensive kanban board application for managing YouTube sponsorship deals,
 The easiest way to start the application is using the provided startup scripts:
 
 #### Option 1: Cross-platform (Works on all systems)
+
 ```bash
 npm run start:all
 ```
 
 #### Option 2: Platform-specific scripts
+
 - **macOS/Linux**: `./start.sh` or `npm run start:unix`
 - **Windows**: `start.bat` or `npm run start:windows`
 
 These scripts will automatically:
+
 - Check prerequisites
 - Install all dependencies
 - Set up environment files
@@ -149,17 +152,20 @@ These scripts will automatically:
 If you prefer to set up manually:
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd youtube-sponsorship-workflow
    ```
 
 2. **Install frontend dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Install backend dependencies**
+
    ```bash
    cd backend
    npm install
@@ -173,13 +179,24 @@ If you prefer to set up manually:
    npx prisma db seed
    ```
 
+### 🔐 Login Credentials
+
+Use the following demo account to log in:
+
+- **Email**: `demo@example.com`
+- **Password**: `demo1234`
+
+> **Note**: The signup functionality has been disabled. Only the seeded demo account can be used for authentication.
+
 5. **Start the backend server**
+
    ```bash
    # In the backend directory
    npm run start:dev
    ```
 
 6. **Start the frontend development server**
+
    ```bash
    # In the root directory
    npm run dev
