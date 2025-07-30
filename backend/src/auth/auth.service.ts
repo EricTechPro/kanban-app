@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenEncryptionService } from './services/token-encryption.service';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +22,36 @@ export class AuthService {
       this.configService.get<string>('GOOGLE_CLIENT_SECRET'),
       this.configService.get<string>('GOOGLE_CALLBACK_URL'),
     );
+  }
+
+  /**
+   * Simple email/password login
+   */
+  async login(email: string, password: string): Promise<any> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || !user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = { sub: user.id, email: user.email };
+    const access_token = this.jwtService.sign(payload);
+
+    return {
+      access_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    };
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -6,6 +6,14 @@ import { AuthService } from './auth.service';
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
+
+  /**
+   * Simple email/password login
+   */
+  @Post('login')
+  async login(@Body() loginDto: { email: string; password: string }) {
+    return this.authService.login(loginDto.email, loginDto.password);
+  }
 
   /**
    * Initiate Gmail OAuth flow
