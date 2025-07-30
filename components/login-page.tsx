@@ -260,17 +260,6 @@ export default function LoginPage() {
                 <Github className="w-5 h-5" />
               </Button>
             </div>
-
-            {/* Sign Up Link */}
-            <p className="text-center text-sm text-gray-600">
-              Don't have an account?{' '}
-              <a
-                href="#"
-                className="font-medium text-blue-600 hover:text-blue-800"
-              >
-                Sign up
-              </a>
-            </p>
           </CardContent>
         </Card>
       </div>
