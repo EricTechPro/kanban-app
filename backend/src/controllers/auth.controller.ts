@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, UseGuards, Request, HttpCode, HttpStatus, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiSecurity } from '@nestjs/swagger';
 import { AuthService } from '../auth/auth.service';
 import {
@@ -34,7 +34,7 @@ export class AuthController {
     status: 409,
     description: 'Conflict - Email already exists'
   })
-  async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
+  async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
     // Implementation would go here
     // This is a placeholder that matches the DTO structure
     return {
@@ -64,7 +64,7 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized - Invalid credentials'
   })
-  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
     // Implementation would go here
     return {
       accessToken: 'jwt-token-here',
