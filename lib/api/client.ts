@@ -1,5 +1,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+import { Deal, KanbanStage } from '../types';
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -10,7 +12,9 @@ export interface RegisterCredentials extends LoginCredentials {
 }
 
 export interface AuthResponse {
-  access_token: string;
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
   user: {
     id: string;
     email: string;
@@ -25,16 +29,49 @@ class ApiClient {
     this.baseURL = API_URL;
   }
 
+  private getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+
+    // Try to get token from cookie
+    const cookies = document.cookie.split(';');
+    const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+    if (tokenCookie) {
+      return tokenCookie.split('=')[1];
+    }
+
+    // Fallback to localStorage for backward compatibility
+    return localStorage.getItem('token');
+  }
+
+  private setToken(token: string): void {
+    if (typeof window === 'undefined') return;
+
+    // Set token in cookie (httpOnly would be better but requires server-side setting)
+    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
+
+    // Also set in localStorage for backward compatibility
+    localStorage.setItem('token', token);
+  }
+
+  private removeToken(): void {
+    if (typeof window === 'undefined') return;
+
+    // Remove token from cookie
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+    // Also remove from localStorage
+    localStorage.removeItem('token');
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const token = this.getToken();
     const url = `${this.baseURL}${endpoint}`;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
 
     if (token) {
@@ -61,8 +98,8 @@ class ApiClient {
       body: JSON.stringify(credentials),
     });
 
-    if (response.access_token) {
-      localStorage.setItem('token', response.access_token);
+    if (response.accessToken) {
+      this.setToken(response.accessToken);
     }
 
     return response;
@@ -74,15 +111,19 @@ class ApiClient {
       body: JSON.stringify(credentials),
     });
 
-    if (response.access_token) {
-      localStorage.setItem('token', response.access_token);
+    if (response.accessToken) {
+      this.setToken(response.accessToken);
     }
 
     return response;
   }
 
   async logout(): Promise<void> {
-    localStorage.removeItem('token');
+    this.removeToken();
+    // Redirect to login page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   }
 
   // Gmail integration
@@ -101,19 +142,19 @@ class ApiClient {
   }
 
   // Deals endpoints
-  async getDeals(): Promise<any[]> {
-    return this.request<any[]>('/api/deals');
+  async getDeals(): Promise<Deal[]> {
+    return this.request<Deal[]>('/api/deals');
   }
 
-  async createDeal(deal: any): Promise<any> {
-    return this.request('/api/deals', {
+  async createDeal(deal: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>): Promise<Deal> {
+    return this.request<Deal>('/api/deals', {
       method: 'POST',
       body: JSON.stringify(deal),
     });
   }
 
-  async updateDeal(id: string, deal: any): Promise<any> {
-    return this.request(`/api/deals/${id}`, {
+  async updateDeal(id: string, deal: Partial<Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Deal> {
+    return this.request<Deal>(`/api/deals/${id}`, {
       method: 'PUT',
       body: JSON.stringify(deal),
     });
@@ -125,8 +166,8 @@ class ApiClient {
     });
   }
 
-  async moveDeal(dealId: string, newStage: string, newPosition: number): Promise<any> {
-    return this.request('/api/deals/move', {
+  async moveDeal(dealId: string, newStage: KanbanStage, newPosition: number): Promise<Deal> {
+    return this.request<Deal>('/api/deals/move', {
       method: 'POST',
       body: JSON.stringify({ dealId, newStage, newPosition }),
     });
