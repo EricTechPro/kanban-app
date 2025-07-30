@@ -19,7 +19,7 @@ This guide will help you set up and run the YouTube Sponsorship Workflow Kanban 
 - **NestJS** - Node.js framework
 - **TypeScript** - Type-safe JavaScript
 - **Prisma** - Database ORM
-- **PostgreSQL** - Database
+- **SQLite** - Database (file-based, no installation required)
 - **tRPC** - Type-safe API
 - **Passport.js** - Authentication
 - **Google APIs** - Gmail integration
@@ -30,8 +30,9 @@ Before you begin, ensure you have the following installed:
 
 - **Node.js** (v18 or higher) - [Download here](https://nodejs.org/)
 - **npm** or **yarn** package manager
-- **PostgreSQL** database - [Download here](https://www.postgresql.org/download/)
 - **Git** for version control
+
+**Note**: SQLite is included with Node.js, so no separate database installation is required!
 
 ## 🚀 Installation & Setup
 
@@ -60,48 +61,18 @@ cd ..
 
 ### 3. Database Setup
 
-#### Install PostgreSQL
-
-**macOS:**
-
-```bash
-brew install postgresql
-brew services start postgresql
-```
-
-**Ubuntu/Debian:**
-
-```bash
-sudo apt-get update
-sudo apt-get install postgresql postgresql-contrib
-sudo service postgresql start
-```
-
-**Windows:**
-Download and install from [PostgreSQL official website](https://www.postgresql.org/download/)
-
-#### Create Database
-
-```bash
-# Create database
-createdb kanban_gmail
-
-# Or using psql
-psql -U postgres
-CREATE DATABASE kanban_gmail;
-\q
-```
+**Great news!** With SQLite, there's no database server to install or configure. The database file will be created automatically when you run the Prisma commands.
 
 ### 4. Environment Configuration
 
 #### Backend Environment Variables
 
-The backend already has a `.env` file with template values. Update `backend/.env` with your actual values:
+The backend already has a `.env` file configured for SQLite. Update `backend/.env` with your actual values:
 
 ```env
 # Database Configuration
-# Replace with your actual PostgreSQL credentials
-DATABASE_URL="postgresql://username:password@localhost:5432/kanban_gmail?schema=public"
+# SQLite database file (will be created automatically)
+DATABASE_URL="file:./dev.db"
 
 # Google OAuth2 Configuration (Optional - for Gmail integration)
 GOOGLE_CLIENT_ID="your-google-client-id"
@@ -122,10 +93,11 @@ PORT=3001
 
 **Important**: Replace the following values:
 
-- `username:password` - Your PostgreSQL credentials (e.g., `postgres:yourpassword`)
 - `your-google-client-id` - Your Google OAuth client ID (if using Gmail integration)
 - `your-google-client-secret` - Your Google OAuth client secret
 - `your-super-secret-jwt-key-change-this-in-production` - A secure JWT secret
+
+**Note**: The `DATABASE_URL` is already configured for SQLite and doesn't need to be changed.
 
 #### Frontend Environment Variables (Optional)
 
@@ -136,7 +108,7 @@ Create `.env.local` file in the root directory if you need custom API endpoints:
 NEXT_PUBLIC_API_URL="http://localhost:3001"
 ```
 
-### 5. Database Migration
+### 5. Database Setup
 
 ```bash
 cd backend
@@ -144,6 +116,12 @@ npx prisma generate
 npx prisma db push
 cd ..
 ```
+
+This will:
+
+- Generate the Prisma client
+- Create the SQLite database file (`dev.db`) in the backend directory
+- Create the database tables
 
 ### 6. Google OAuth Setup (Optional)
 
@@ -213,6 +191,7 @@ kanban-app/
 │   ├── prisma/            # Database schema
 │   │   └── schema.prisma  # Prisma schema
 │   ├── dist/              # Compiled output
+│   ├── dev.db             # SQLite database file (created automatically)
 │   └── .env               # Environment variables
 ├── components/            # React components
 ├── lib/                   # Utility functions
@@ -241,12 +220,11 @@ kanban-app/
 
 ### Common Issues
 
-#### Database Connection Issues
+#### Database Issues
 
-- Ensure PostgreSQL is running: `brew services start postgresql` (macOS) or `sudo service postgresql start` (Linux)
-- Check database credentials in `backend/.env`
-- Verify database exists: `psql -U postgres -l`
-- Test connection: `psql -U postgres -d kanban_gmail`
+- **Database file not found**: Run `npx prisma db push` from the backend directory
+- **Permission errors**: Ensure the backend directory is writable
+- **Schema changes**: Run `npx prisma db push` after modifying the schema
 
 #### Port Already in Use
 
@@ -277,49 +255,61 @@ npx prisma generate
 npx prisma db push
 
 # If you need to reset the database
-npx prisma db push --force-reset
+rm dev.db
+npx prisma db push
 ```
 
 #### Environment Variable Issues
 
 - Make sure `backend/.env` exists and has correct values
-- Check that DATABASE_URL format is correct
-- Ensure PostgreSQL user has proper permissions
+- The DATABASE_URL should be `file:./dev.db` for SQLite
+- Ensure all required environment variables are set
 
-### Database Connection Examples
+### Database Management
 
-**Default PostgreSQL setup:**
+**View your data:**
 
-```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/kanban_gmail?schema=public"
+```bash
+cd backend
+npx prisma studio
 ```
 
-**PostgreSQL with custom user:**
+This opens a web interface to view and edit your database data.
 
-```env
-DATABASE_URL="postgresql://myuser:mypassword@localhost:5432/kanban_gmail?schema=public"
+**Reset database:**
+
+```bash
+cd backend
+rm dev.db
+npx prisma db push
 ```
 
 ## 🚀 Quick Start Checklist
 
 - [ ] Node.js v18+ installed
-- [ ] PostgreSQL installed and running
 - [ ] Repository cloned
 - [ ] Frontend dependencies installed (`npm install`)
 - [ ] Backend dependencies installed (`cd backend && npm install`)
-- [ ] Database created (`createdb kanban_gmail`)
 - [ ] Environment variables configured (`backend/.env`)
 - [ ] Prisma setup completed (`npx prisma generate && npx prisma db push`)
 - [ ] Backend running (`cd backend && npm run start:dev`)
 - [ ] Frontend running (`npm run dev`)
 - [ ] Application accessible at `http://localhost:3000`
 
+## 🎯 SQLite Benefits
+
+- **No Installation Required**: SQLite is included with Node.js
+- **File-Based**: Database is just a file (`dev.db`)
+- **Zero Configuration**: No server setup or user management
+- **Perfect for Development**: Easy to reset, backup, and share
+- **Production Ready**: Can handle moderate traffic loads
+
 ## 🔗 Useful Links
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [NestJS Documentation](https://docs.nestjs.com/)
 - [Prisma Documentation](https://www.prisma.io/docs)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [SQLite Documentation](https://www.sqlite.org/docs.html)
 - [shadcn/ui Components](https://ui.shadcn.com/)
 
 ## 🆘 Getting Help
@@ -331,5 +321,6 @@ If you encounter issues:
 3. Ensure environment variables are correctly set
 4. Check that both frontend and backend are running
 5. Look at console logs for specific error messages
+6. Try resetting the database: `rm backend/dev.db && cd backend && npx prisma db push`
 
 For additional support, please check the project documentation or create an issue in the repository.
