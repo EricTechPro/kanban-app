@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "start:all": "node start.js",
+    "start:unix": "./start.sh",
+    "start:windows": "start.bat",
+    "setup": "npm install && cd backend && npm install && npx prisma generate && cd .."
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
