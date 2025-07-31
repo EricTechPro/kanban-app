@@ -17,7 +17,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { TopNavigation } from '@/components/top-navigation';
+
 import { DashboardStatsBar } from '@/components/dashboard-stats';
 import { KanbanColumnComponent } from '@/components/kanban-column';
 import { DealCard } from '@/components/deal-card';
@@ -28,7 +28,7 @@ import { GmailSync } from '@/components/gmail-sync';
 import { Deal, KanbanStage } from '@/lib/types';
 import { useKanban } from '@/lib/kanban-context';
 import { useGmailSync } from '@/lib/use-gmail-sync';
-import { mockUser } from '@/lib/mock-data';
+
 import { Grid, List, Calendar, Download, Move, Trash2 } from 'lucide-react';
 
 export function Dashboard() {
@@ -59,15 +59,6 @@ export function Dashboard() {
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
-
-  // Filter states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [dateRangeFilter, setDateRangeFilter] = useState<{
-    from: Date;
-    to: Date;
-  } | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -238,28 +229,7 @@ export function Dashboard() {
     }
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-
-  const handleFilterStatus = (status: string) => {
-    setStatusFilter(status);
-  };
-
-  const handleFilterBrand = (brand: string) => {
-    setBrandFilter(brand);
-  };
-
-  const handleFilterDateRange = (dateRange: { from: Date; to: Date }) => {
-    setDateRangeFilter(dateRange);
-  };
-
-  const handleClearFilters = () => {
-    setSearchQuery('');
-    setStatusFilter('');
-    setBrandFilter('');
-    setDateRangeFilter(null);
-  };
+  const toggleSelectAll = () => {
 
   const toggleSelectAll = () => {
     if (selectAll) {
@@ -315,26 +285,8 @@ export function Dashboard() {
     // TODO: Implement export functionality
   };
 
-  // Apply filters to columns
-  const filteredColumns = state.columns.map((column) => ({
-    ...column,
-    deals: column.deals.filter((deal) => {
-      const matchesSearch =
-        !searchQuery ||
-        deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        deal.brand.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesStatus = !statusFilter || deal.stage === statusFilter;
-      const matchesBrand = !brandFilter || deal.brand === brandFilter;
-
-      const matchesDateRange =
-        !dateRangeFilter ||
-        (deal.dueDate >= dateRangeFilter.from &&
-          deal.dueDate <= dateRangeFilter.to);
-
-      return matchesSearch && matchesStatus && matchesBrand && matchesDateRange;
-    }),
-  }));
+  // Use columns directly without filtering
+  const filteredColumns = state.columns;
 
   const totalDeals = filteredColumns.reduce(
     (sum, column) => sum + column.deals.length,
@@ -357,14 +309,7 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopNavigation
-        user={mockUser}
-        onSearch={handleSearch}
-        onFilterStatus={handleFilterStatus}
-        onFilterBrand={handleFilterBrand}
-        onFilterDateRange={handleFilterDateRange}
-        onClearFilters={handleClearFilters}
-      />
+      <div className="p-6 space-y-6">
 
       <div className="p-6 space-y-6">
         <DashboardStatsBar stats={dashboardStats} />
@@ -541,5 +486,6 @@ export function Dashboard() {
         deal={dealToEdit}
       />
     </div>
+  </div>
   );
 }
