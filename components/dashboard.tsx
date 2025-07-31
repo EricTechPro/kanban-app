@@ -38,7 +38,6 @@ export function Dashboard() {
     moveDeal,
     addDeal,
     updateDeal,
-    deleteDeal,
     bulkMoveDeals,
     bulkDeleteDeals,
     reorderDeals,
@@ -202,31 +201,15 @@ export function Dashboard() {
     addDeal(newDeal, newDeal.stage);
   };
 
-  const handleEditDeal = (deal: Deal) => {
-    setDealToEdit(deal);
-    setIsEditDealModalOpen(true);
-  };
-
   const handleUpdateDeal = (dealId: string, updates: Partial<Deal>) => {
     updateDeal(dealId, updates);
     setDealToEdit(null);
-  };
-
-  const handleMoveDeal = (deal: Deal) => {
-    setDealToMove(deal);
-    setIsMoveDealModalOpen(true);
   };
 
   const handleMoveDealToStage = (toStage: KanbanStage) => {
     if (dealToMove) {
       moveDeal(dealToMove.id, dealToMove.stage, toStage);
       setDealToMove(null);
-    }
-  };
-
-  const handleDeleteDeal = (deal: Deal) => {
-    if (confirm(`Are you sure you want to delete "${deal.title}"?`)) {
-      deleteDeal(deal.id);
     }
   };
 

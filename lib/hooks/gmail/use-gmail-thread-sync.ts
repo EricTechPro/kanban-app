@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { GmailThread, Deal, KanbanStage } from '@/lib/types';
 import { useKanban } from '../kanban/use-kanban';
@@ -34,7 +34,10 @@ export function useGmailThreadSync() {
 
       // Convert threads to deals
       const allDeals: Deal[] = [];
+      console.log('[useGmailThreadSync] Threads by stage:', threadsByStage);
+
       for (const [stage, threads] of Object.entries(threadsByStage)) {
+        console.log(`[useGmailThreadSync] Processing ${threads.length} threads for stage: ${stage}`);
         for (const thread of threads as GmailThread[]) {
           const deal = GmailThreadConverter.threadToDeal(thread);
           allDeals.push(deal);

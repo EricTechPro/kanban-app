@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
           errorMessage = 'Redirect URI mismatch';
           errorDetails = `The redirect URI doesn\'t match. Expected: ${redirectUri}`;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_) {
         // If error is not JSON, use the raw error
         console.error('[POST] Could not parse error response as JSON');

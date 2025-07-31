@@ -1,68 +1,65 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, TrendingUp, Users, Target } from 'lucide-react';
+import { DollarSign, TrendingUp, CheckCircle, Briefcase } from 'lucide-react';
 import { useKanban } from '@/lib/hooks/kanban/use-kanban';
 
 export function DashboardStats() {
   const { state } = useKanban();
   const { deals } = state;
 
-  // Calculate real statistics from the deals
-  const totalDeals = deals.length;
-  const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
-  const avgDealValue = totalDeals > 0 ? Math.round(totalValue / totalDeals) : 0;
+  console.log('[DashboardStats] Total deals:', deals.length);
+  console.log(
+    '[DashboardStats] Deals by stage:',
+    deals.reduce((acc, deal) => {
+      acc[deal.stage] = (acc[deal.stage] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  );
 
-  // Calculate pipeline value (deals not completed)
-  const pipelineDeals = deals.filter((deal) => deal.stage !== 'completed');
-  const pipelineValue = pipelineDeals.reduce(
+  // Calculate total revenue (sum of all completed deals)
+  const completedDeals = deals.filter((deal) => deal.stage === 'completed');
+  const totalRevenue = completedDeals.reduce(
     (sum, deal) => sum + deal.value,
     0
   );
+  console.log('[DashboardStats] Completed deals:', completedDeals.length);
+  console.log('[DashboardStats] Total revenue:', totalRevenue);
 
-  // Calculate conversion rate (completed deals / total deals)
-  const completedDeals = deals.filter((deal) => deal.stage === 'completed');
-  const conversionRate =
-    totalDeals > 0 ? Math.round((completedDeals.length / totalDeals) * 100) : 0;
+  // Calculate current active deals (all deals not completed)
+  const activeDeals = deals.filter((deal) => deal.stage !== 'completed');
+  console.log('[DashboardStats] Active deals:', activeDeals.length);
 
-  // Calculate weighted pipeline value based on progress
-  const weightedPipelineValue = pipelineDeals.reduce(
-    (sum, deal) => sum + (deal.value * deal.progress) / 100,
-    0
-  );
+  // Number of deals completed
+  const dealsCompleted = completedDeals.length;
+
+  // Total deals
+  const totalDeals = deals.length;
 
   const stats = [
     {
-      title: 'Total Pipeline Value',
-      value: `$${pipelineValue.toLocaleString()}`,
-      description: `${pipelineDeals.length} active deals`,
+      title: 'Total Revenue',
+      value: `$${totalRevenue.toLocaleString()}`,
+      description: 'From completed deals',
       icon: DollarSign,
-      trend: '+12.5%',
-      trendUp: true,
     },
     {
-      title: 'Weighted Pipeline',
-      value: `$${Math.round(weightedPipelineValue).toLocaleString()}`,
-      description: 'Based on progress',
-      icon: Target,
-      trend: '+8.2%',
-      trendUp: true,
-    },
-    {
-      title: 'Average Deal Size',
-      value: `$${avgDealValue.toLocaleString()}`,
-      description: `From ${totalDeals} total deals`,
+      title: 'Current Active Deals',
+      value: activeDeals.length.toString(),
+      description: 'In progress',
       icon: TrendingUp,
-      trend: '+5.4%',
-      trendUp: true,
     },
     {
-      title: 'Conversion Rate',
-      value: `${conversionRate}%`,
-      description: `${completedDeals.length} deals closed`,
-      icon: Users,
-      trend: '-2.1%',
-      trendUp: false,
+      title: 'Deals Completed',
+      value: dealsCompleted.toString(),
+      description: 'Successfully closed',
+      icon: CheckCircle,
+    },
+    {
+      title: 'Total Deals',
+      value: totalDeals.toString(),
+      description: 'All time',
+      icon: Briefcase,
     },
   ];
 
@@ -77,16 +74,6 @@ export function DashboardStats() {
           <CardContent>
             <div className="text-2xl font-bold">{stat.value}</div>
             <p className="text-xs text-muted-foreground">{stat.description}</p>
-            <div className="mt-2 flex items-center text-xs">
-              <span
-                className={stat.trendUp ? 'text-green-600' : 'text-red-600'}
-              >
-                {stat.trend}
-              </span>
-              <span className="ml-1 text-muted-foreground">
-                from last month
-              </span>
-            </div>
           </CardContent>
         </Card>
       ))}

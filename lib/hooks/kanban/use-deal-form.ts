@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Deal, DealFormData, KanbanStage } from '@/lib/types';
-import { useKanban } from '../use-kanban';
+import { useKanban } from './use-kanban';
+
 
 interface UseDealFormReturn {
   formData: DealFormData;

@@ -315,7 +315,8 @@ class ApiClient {
   }
 
   async getGmailThreads(): Promise<GmailThread[]> {
-    return this.request<GmailThread[]>('/api/gmail/threads');
+    const response = await this.request<{ threads: GmailThread[]; nextPageToken?: string; totalThreads: number }>('/api/gmail/threads');
+    return response.threads;
   }
 
   async moveGmailThread(

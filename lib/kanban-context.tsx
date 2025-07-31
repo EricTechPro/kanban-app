@@ -2,6 +2,7 @@
 
 import React, { createContext, useReducer, ReactNode } from 'react';
 import { Deal, KanbanColumn, KanbanStage } from './types';
+import { KANBAN_STAGES, STAGE_CONFIG } from './constants';
 
 // Export the context for use in hooks
 export const KanbanContext = createContext<KanbanContextType | undefined>(
@@ -294,7 +295,12 @@ interface KanbanProviderProps {
 
 // Initial state without mock data - will be populated from Gmail
 const initialState: KanbanState = {
-  columns: [], // Columns will be derived from deals
+  columns: Object.values(KANBAN_STAGES).map((stage) => ({
+    id: stage,
+    title: STAGE_CONFIG[stage].label,
+    deals: [],
+    color: STAGE_CONFIG[stage].color,
+  })),
   deals: [], // Start with empty deals - will be populated from Gmail
   isLoading: false,
   error: null,
@@ -371,11 +377,13 @@ export function KanbanProvider({ children }: KanbanProviderProps) {
   };
 
   const getDealById = (dealId: string): Deal | undefined => {
-    return state.deals.find((deal) => deal.id === dealId);
+    return state.columns
+      .flatMap((column) => column.deals)
+      .find((deal) => deal.id === dealId);
   };
 
   const getAllDeals = (): Deal[] => {
-    return state.deals;
+    return state.columns.flatMap((column) => column.deals);
   };
 
   const clearGmailDeals = () => {

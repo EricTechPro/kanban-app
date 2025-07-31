@@ -1,5 +1,5 @@
 import { Deal, GmailThread, GmailMessage, Priority, DealType } from '@/lib/types';
-import { GMAIL_CONFIG, KANBAN_STAGES } from '@/lib/constants';
+import { GMAIL_CONFIG } from '@/lib/constants';
 
 export class GmailThreadConverter {
   /**
@@ -8,7 +8,7 @@ export class GmailThreadConverter {
   static threadToDeal(thread: GmailThread): Deal {
     const firstMessage = thread.messages[0];
     const lastMessage = thread.messages[thread.messages.length - 1];
-    
+
     return {
       id: thread.threadId,
       title: firstMessage.subject,
@@ -64,7 +64,7 @@ export class GmailThreadConverter {
       if (subjectMatch) {
         return parseFloat(subjectMatch[1].replace(/,/g, ''));
       }
-      
+
       // Check body if available
       if (message.body) {
         const bodyMatch = message.body.match(/\$?([\d,]+(?:\.\d{2})?)/);
@@ -73,7 +73,7 @@ export class GmailThreadConverter {
         }
       }
     }
-    
+
     return 0;
   }
 
@@ -93,21 +93,21 @@ export class GmailThreadConverter {
   private static calculatePriority(thread: GmailThread): Priority {
     const lastMessage = thread.messages[thread.messages.length - 1];
     const daysSinceLastEmail = (new Date().getTime() - new Date(lastMessage.date).getTime()) / (1000 * 60 * 60 * 24);
-    
+
     if (
       thread.messages.length >= GMAIL_CONFIG.SYNC.MIN_EMAILS_FOR_HIGH_PRIORITY ||
       daysSinceLastEmail < GMAIL_CONFIG.SYNC.DEFAULT_PRIORITY_DAYS.HIGH
     ) {
       return 'high';
     }
-    
+
     if (
       thread.messages.length >= GMAIL_CONFIG.SYNC.MIN_EMAILS_FOR_MEDIUM_PRIORITY ||
       daysSinceLastEmail < GMAIL_CONFIG.SYNC.DEFAULT_PRIORITY_DAYS.MEDIUM
     ) {
       return 'medium';
     }
-    
+
     return 'low';
   }
 
@@ -116,17 +116,17 @@ export class GmailThreadConverter {
    */
   private static extractTags(messages: GmailMessage[]): string[] {
     const tags = new Set<string>();
-    
+
     messages.forEach(message => {
       const content = `${message.subject} ${message.snippet}`.toLowerCase();
-      
+
       Object.entries(GMAIL_CONFIG.TAGS.KEYWORDS).forEach(([tag, keywords]) => {
         if (keywords.some(keyword => content.includes(keyword))) {
           tags.add(tag);
         }
       });
     });
-    
+
     return Array.from(tags);
   }
 
@@ -138,19 +138,19 @@ export class GmailThreadConverter {
       .map(m => `${m.subject} ${m.snippet}`)
       .join(' ')
       .toLowerCase();
-    
+
     if (content.includes('sponsor') || content.includes('sponsored video')) {
       return 'sponsored-video';
     }
-    
+
     if (content.includes('review') || content.includes('product review')) {
       return 'product-review';
     }
-    
+
     if (content.includes('integration') || content.includes('brand integration')) {
       return 'brand-integration';
     }
-    
+
     return 'other';
   }
 }

@@ -4,6 +4,7 @@ export const KANBAN_STAGES = {
   INITIAL_CONTACT: 'initial-contact',
   NEGOTIATION: 'negotiation',
   CONTRACT_SENT: 'contract-sent',
+  CONTRACT_SIGNED: 'contract-signed',
   IN_PRODUCTION: 'in-production',
   COMPLETED: 'completed',
 } as const;
@@ -35,6 +36,11 @@ export const STAGE_CONFIG: Record<KanbanStage, {
     label: 'Contract Sent',
     color: 'bg-purple-100 text-purple-800',
     description: 'Contract has been sent for review',
+  },
+  [KANBAN_STAGES.CONTRACT_SIGNED]: {
+    label: 'Contract Signed',
+    color: 'bg-purple-200 text-purple-500',
+    description: 'Contract has been signed',
   },
   [KANBAN_STAGES.IN_PRODUCTION]: {
     label: 'In Production',

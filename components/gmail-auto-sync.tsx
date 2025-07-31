@@ -22,6 +22,7 @@ export function GmailAutoSync() {
         if (status.isAuthenticated && !hasSynced) {
           console.log('[GmailAutoSync] Gmail connected, syncing threads...');
           const result = await syncGmailThreads();
+          console.log('[GmailAutoSync] Sync result:', result);
           if (result.success) {
             setHasSynced(true);
             console.log(
@@ -29,7 +30,13 @@ export function GmailAutoSync() {
               result.totalAdded,
               'deals'
             );
+          } else {
+            console.error('[GmailAutoSync] Sync failed:', result.error);
           }
+        } else if (!status.isAuthenticated) {
+          console.log('[GmailAutoSync] Gmail not connected');
+        } else {
+          console.log('[GmailAutoSync] Already synced');
         }
       } catch (error) {
         console.error('[GmailAutoSync] Error during auto-sync:', error);

@@ -52,7 +52,7 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
   const [gmailConnected, setGmailConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('');
+  const [, setDebugInfo] = useState<string>('');
   const { syncGmailThreads } = useGmailThreadSync();
 
   useEffect(() => {
@@ -418,16 +418,6 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
               <li>4. Moving cards will update Gmail labels automatically</li>
             </ol>
           </div>
-
-          {/* Debug Information */}
-          {debugInfo && (
-            <Alert className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <pre className="text-xs whitespace-pre-wrap">{debugInfo}</pre>
-              </AlertDescription>
-            </Alert>
-          )}
         </CardContent>
       </Card>
 

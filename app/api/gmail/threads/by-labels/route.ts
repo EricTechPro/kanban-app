@@ -1,124 +1,131 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { KANBAN_STAGES, GMAIL_CONFIG } from '@/lib/constants';
+import { KANBAN_STAGES, GMAIL_CONFIG, STAGE_CONFIG } from '@/lib/constants';
 import { GmailThread, KanbanStage } from '@/lib/types';
 
 interface GmailLabel {
   id: string;
   name: string;
+  type?: string;
 }
 
 interface GmailThreadSummary {
   id: string;
-  snippet?: string;
-}
-
-interface GmailMessage {
-  id: string;
   threadId: string;
-  labelIds?: string[];
-  snippet?: string;
-  payload?: {
-    headers?: Array<{
-      name: string;
-      value: string;
-    }>;
-  };
-  internalDate?: string;
+  snippet: string;
+  historyId: string;
 }
 
 interface GmailThreadData {
   id: string;
-  snippet?: string;
-  messages?: GmailMessage[];
+  snippet: string;
+  messages?: {
+    id: string;
+    threadId: string;
+    labelIds?: string[];
+    snippet?: string;
+    payload?: {
+      headers?: Array<{
+        name: string;
+        value: string;
+      }>;
+    };
+    internalDate?: string;
+  }[];
 }
 
 export async function GET() {
   try {
-    console.log('[API] Fetching Gmail threads by labels');
-
-    // Check if we have Gmail tokens
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get('gmail_access_token');
+    const accessToken = cookieStore.get('gmail_access_token')?.value;
 
     if (!accessToken) {
-      console.log('[API] No Gmail access token found');
       return NextResponse.json(
         { error: 'Not authenticated with Gmail' },
         { status: 401 }
       );
     }
 
-    // Get threads organized by stage
-    const threadsByStage: Record<KanbanStage, GmailThread[]> = {} as Record<KanbanStage, GmailThread[]>;
-
-    // Initialize empty arrays for each stage
-    Object.values(KANBAN_STAGES).forEach((stage) => {
-      threadsByStage[stage as KanbanStage] = [];
-    });
-
-    // First get all labels
+    // First, get all labels to find the Kanban labels
     const labelsResponse = await fetch(
       'https://gmail.googleapis.com/gmail/v1/users/me/labels',
       {
         headers: {
-          'Authorization': `Bearer ${accessToken.value}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       }
     );
 
     if (!labelsResponse.ok) {
-      console.error('[API] Failed to fetch labels:', labelsResponse.status);
-      return NextResponse.json(
-        { error: 'Failed to fetch Gmail labels' },
-        { status: labelsResponse.status }
-      );
+      if (labelsResponse.status === 401) {
+        return NextResponse.json(
+          { error: 'Gmail authentication expired' },
+          { status: 401 }
+        );
+      }
+      throw new Error(`Failed to fetch labels: ${labelsResponse.status}`);
     }
 
     const labelsData = await labelsResponse.json();
     const labels: GmailLabel[] = labelsData.labels || [];
 
-    // Fetch threads for each stage label
-    for (const stage of Object.values(KANBAN_STAGES)) {
-      const labelName = `${GMAIL_CONFIG.LABEL_PREFIX}/${stage}`;
+    console.log('[API] Available Gmail labels:', labels.map(l => l.name));
 
+    // Initialize result object
+    const threadsByStage: Record<KanbanStage, GmailThread[]> = {
+      [KANBAN_STAGES.PROSPECTING]: [],
+      [KANBAN_STAGES.INITIAL_CONTACT]: [],
+      [KANBAN_STAGES.NEGOTIATION]: [],
+      [KANBAN_STAGES.CONTRACT_SENT]: [],
+      [KANBAN_STAGES.CONTRACT_SIGNED]: [],
+      [KANBAN_STAGES.IN_PRODUCTION]: [],
+      [KANBAN_STAGES.COMPLETED]: [],
+    };
+
+    // For each stage, find threads with that label
+    for (const stage of Object.values(KANBAN_STAGES)) {
       try {
+        const labelName = `${GMAIL_CONFIG.LABELS.PREFIX}${GMAIL_CONFIG.LABELS.SEPARATOR}${STAGE_CONFIG[stage as KanbanStage].label}`;
+
         // Find the label ID
         const label = labels.find((l) => l.name === labelName);
+
+        console.log(`[API] Looking for label: ${labelName}`);
+        console.log(`[API] Found label:`, label);
 
         if (!label?.id) {
           console.log(`[API] Label ${labelName} not found, skipping...`);
           continue;
         }
 
-        // Get threads with this label
+        // Fetch threads with this label
         const threadsResponse = await fetch(
           `https://gmail.googleapis.com/gmail/v1/users/me/threads?labelIds=${label.id}&maxResults=50`,
           {
             headers: {
-              'Authorization': `Bearer ${accessToken.value}`,
+              Authorization: `Bearer ${accessToken}`,
             },
           }
         );
 
         if (!threadsResponse.ok) {
-          console.error(`[API] Failed to fetch threads for ${stage}:`, threadsResponse.status);
+          console.error(`[API] Failed to fetch threads for label ${labelName}:`, threadsResponse.status);
           continue;
         }
 
         const threadsData = await threadsResponse.json();
         const threadSummaries: GmailThreadSummary[] = threadsData.threads || [];
 
-        // Fetch full thread details
+        console.log(`[API] Found ${threadSummaries.length} threads for stage ${stage}`);
+
+        // Fetch full thread data for each thread
         const threads: GmailThread[] = [];
         for (const threadSummary of threadSummaries) {
-          if (!threadSummary.id) continue;
-
           const threadResponse = await fetch(
             `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadSummary.id}`,
             {
               headers: {
-                'Authorization': `Bearer ${accessToken.value}`,
+                Authorization: `Bearer ${accessToken}`,
               },
             }
           );
@@ -131,18 +138,25 @@ export async function GET() {
           const threadData: GmailThreadData = await threadResponse.json();
 
           threads.push({
-            id: threadData.id,
-            snippet: threadData.snippet || '',
-            messages: threadData.messages?.map((msg) => ({
-              id: msg.id,
-              threadId: msg.threadId,
-              labelIds: msg.labelIds || [],
-              snippet: msg.snippet || '',
-              payload: {
-                headers: msg.payload?.headers || [],
-              },
-              internalDate: msg.internalDate || '',
-            })) || [],
+            threadId: threadData.id,
+            messages: threadData.messages?.map((msg) => {
+              // Extract headers
+              const headers = msg.payload?.headers || [];
+              const getHeader = (name: string) =>
+                headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+
+              return {
+                id: msg.id,
+                threadId: msg.threadId,
+                from: getHeader('from'),
+                to: getHeader('to').split(',').map(email => email.trim()).filter(Boolean),
+                subject: getHeader('subject'),
+                snippet: msg.snippet || '',
+                date: new Date(parseInt(msg.internalDate || '0')),
+                labels: msg.labelIds || [],
+              };
+            }) || [],
+            stage: stage as KanbanStage,
           });
         }
 
@@ -153,6 +167,10 @@ export async function GET() {
     }
 
     console.log('[API] Successfully fetched threads by labels');
+    console.log('[API] Threads by stage:', Object.entries(threadsByStage).map(([stage, threads]) =>
+      `${stage}: ${threads.length} threads`
+    ));
+
     return NextResponse.json(threadsByStage);
   } catch (error) {
     console.error('[API] Error fetching Gmail threads by labels:', error);
