@@ -103,15 +103,35 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
   const setupKanbanLabels = async () => {
     setIsSettingUpLabels(true);
     setError(null);
-    setSyncStatus('Setting up Gmail labels...');
+    setSuccess(null);
+    setSyncStatus('Checking Gmail labels...');
 
     try {
-      const labels = await apiClient.ensureKanbanLabels();
-      setSuccess('Gmail labels created successfully!');
-      setSyncStatus(
-        `Created ${Object.keys(labels.stageLabels).length} kanban stage labels`
-      );
-      return true;
+      const response = await apiClient.ensureKanbanLabels();
+
+      // Build a detailed status message
+      const { summary } = response;
+      let statusMessage = '';
+
+      if (summary.created.length > 0) {
+        statusMessage += `Created ${summary.created.length} new labels. `;
+      }
+
+      if (summary.existing.length > 0) {
+        statusMessage += `${summary.existing.length} labels already exist. `;
+      }
+
+      if (summary.failed.length > 0) {
+        statusMessage += `Failed to create ${summary.failed.length} labels.`;
+        setError(`Some labels failed: ${summary.failed.map(f => f.label).join(', ')}`);
+      } else {
+        setSuccess('All Gmail labels are ready! You can now sync your emails.');
+      }
+
+      setSyncStatus(statusMessage || 'All labels verified!');
+
+      // Return true if we have all labels ready (even if some already existed)
+      return summary.failed.length === 0;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to setup Gmail labels'

@@ -10,29 +10,44 @@ const oauth2Client = new google.auth.OAuth2(
 
 export async function GET(request: Request) {
   try {
+    console.log('[Gmail Emails API] Request received');
+    
     const cookieStore = await cookies();
-    const tokensCookie = cookieStore.get('gmail_tokens')?.value;
+    const accessToken = cookieStore.get('gmail_access_token')?.value;
+    const refreshToken = cookieStore.get('gmail_refresh_token')?.value;
+    const tokenExpiry = cookieStore.get('gmail_token_expiry')?.value;
 
-    if (!tokensCookie) {
+    console.log('[Gmail Emails API] Token status:', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      hasExpiry: !!tokenExpiry
+    });
+
+    if (!accessToken) {
+      console.log('[Gmail Emails API] No access token found');
       return NextResponse.json(
         { error: 'Not authenticated with Gmail' },
         { status: 401 }
       );
     }
 
-    const tokens = JSON.parse(tokensCookie);
-
-    if (!tokens.access_token) {
-      return NextResponse.json(
-        { error: 'No access token available' },
-        { status: 401 }
-      );
+    // Check if token is expired
+    if (tokenExpiry) {
+      const expiryDate = new Date(tokenExpiry);
+      const now = new Date();
+      if (expiryDate < now) {
+        console.log('[Gmail Emails API] Token is expired');
+        return NextResponse.json(
+          { error: 'Token expired', needsRefresh: true },
+          { status: 401 }
+        );
+      }
     }
 
     // Set credentials
     oauth2Client.setCredentials({
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token
+      access_token: accessToken,
+      refresh_token: refreshToken
     });
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
@@ -41,6 +56,8 @@ export async function GET(request: Request) {
     const maxResults = parseInt(searchParams.get('maxResults') || '10');
     const labelIds = searchParams.get('labelIds')?.split(',') || [];
     const q = searchParams.get('q') || '';
+
+    console.log('[Gmail Emails API] Query params:', { maxResults, labelIds, q });
 
     // Fetch emails
     const response = await gmail.users.messages.list({
@@ -51,33 +68,42 @@ export async function GET(request: Request) {
     });
 
     const messages = response.data.messages || [];
+    console.log('[Gmail Emails API] Found messages:', messages.length);
 
-    // Fetch full email details
-    const emails = await Promise.all(
-      messages.map(async (message) => {
-        const msg = await gmail.users.messages.get({
-          userId: 'me',
-          id: message.id!,
-          format: 'full'
-        });
-        return msg.data;
-      })
-    );
+    // Fetch details for each message
+    const emailPromises = messages.map(async (message) => {
+      const detail = await gmail.users.messages.get({
+        userId: 'me',
+        id: message.id!
+      });
 
-    return NextResponse.json(emails);
+      const headers = detail.data.payload?.headers || [];
+      const subject = headers.find(h => h.name === 'Subject')?.value || '';
+      const from = headers.find(h => h.name === 'From')?.value || '';
+      const date = headers.find(h => h.name === 'Date')?.value || '';
+
+      return {
+        id: message.id,
+        threadId: message.threadId,
+        subject,
+        from,
+        date,
+        snippet: detail.data.snippet || '',
+        labelIds: detail.data.labelIds || []
+      };
+    });
+
+    const emails = await Promise.all(emailPromises);
+    console.log('[Gmail Emails API] Processed emails:', emails.length);
+
+    return NextResponse.json({ emails });
   } catch (error) {
-    console.error('Error fetching emails:', error);
-
-    // If token expired, try to refresh
-    if (error instanceof Error && 'response' in error &&
-      typeof error.response === 'object' && error.response !== null &&
-      'status' in error.response && error.response.status === 401) {
-      return NextResponse.json(
-        { error: 'Authentication expired. Please re-authenticate.' },
-        { status: 401 }
-      );
-    }
-
+    console.error('[Gmail Emails API] Error:', error);
+    console.error('[Gmail Emails API] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return NextResponse.json(
       { error: 'Failed to fetch emails' },
       { status: 500 }

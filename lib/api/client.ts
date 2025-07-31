@@ -31,6 +31,13 @@ interface GmailLabel {
 interface KanbanLabels {
   parentLabel: GmailLabel;
   stageLabels: Record<string, GmailLabel>;
+  summary?: {
+    totalLabels: number;
+    created: string[];
+    existing: string[];
+    failed: { label: string; error: string }[];
+  };
+  message?: string;
 }
 
 interface GmailDeal extends Deal {

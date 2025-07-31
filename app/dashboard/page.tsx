@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Dashboard } from '@/components/dashboard';
 import GmailDashboard from '@/components/gmail-dashboard';
@@ -10,48 +10,69 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 export default function DashboardPage() {
+  console.log('[DashboardPage] Component mounting');
+  
   const [view, setView] = useState<'kanban' | 'gmail'>('gmail');
   const [isConnected, setIsConnected] = useState(false);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
     message: string;
   } | null>(null);
-  const searchParams = useSearchParams();
+  
+  let searchParams: URLSearchParams | null = null;
+  
+  try {
+    searchParams = useSearchParams();
+    console.log('[DashboardPage] Search params initialized');
+  } catch (error) {
+    console.error('[DashboardPage] Error initializing search params:', error);
+  }
 
   useEffect(() => {
-    // Check for success/error parameters
-    const success = searchParams.get('success');
-    const error = searchParams.get('error');
+    console.log('[DashboardPage] Initial useEffect running');
+    
+    try {
+      // Check for success/error parameters
+      const success = searchParams?.get('success');
+      const error = searchParams?.get('error');
 
-    if (success === 'gmail_connected') {
-      setNotification({
-        type: 'success',
-        message: 'Successfully connected to Gmail!',
-      });
-      // Clear the URL parameter
-      window.history.replaceState({}, '', '/dashboard');
-    } else if (error) {
-      const errorMessages: Record<string, string> = {
-        auth_failed: 'Gmail authentication failed. Please try again.',
-        callback_failed: 'Failed to complete authentication. Please try again.',
-        no_code: 'No authorization code received. Please try again.',
-      };
-      setNotification({
-        type: 'error',
-        message:
-          errorMessages[error] || 'An error occurred during authentication.',
-      });
-      // Clear the URL parameter
-      window.history.replaceState({}, '', '/dashboard');
+      console.log('[DashboardPage] URL params:', { success, error });
+
+      if (success === 'gmail_connected') {
+        setNotification({
+          type: 'success',
+          message: 'Successfully connected to Gmail!',
+        });
+        // Clear the URL parameter
+        window.history.replaceState({}, '', '/dashboard');
+      } else if (error) {
+        const errorMessages: Record<string, string> = {
+          auth_failed: 'Gmail authentication failed. Please try again.',
+          callback_failed: 'Failed to complete authentication. Please try again.',
+          no_code: 'No authorization code received. Please try again.',
+        };
+        setNotification({
+          type: 'error',
+          message:
+            errorMessages[error] || 'An error occurred during authentication.',
+        });
+        // Clear the URL parameter
+        window.history.replaceState({}, '', '/dashboard');
+      }
+
+      checkGmailStatus();
+    } catch (error) {
+      console.error('[DashboardPage] Error in initial useEffect:', error);
     }
-
-    checkGmailStatus();
   }, [searchParams]);
 
   useEffect(() => {
+    console.log('[DashboardPage] Notification timer useEffect running');
+    
     // Auto-hide notification after 5 seconds
     if (notification) {
       const timer = setTimeout(() => {
+        console.log('[DashboardPage] Hiding notification');
         setNotification(null);
       }, 5000);
       return () => clearTimeout(timer);
@@ -59,21 +80,55 @@ export default function DashboardPage() {
   }, [notification]);
 
   const checkGmailStatus = async () => {
+    console.log('[DashboardPage] Checking Gmail status...');
+
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
-      const response = await fetch(`${baseUrl}/api/auth/gmail/status`);
+      // Use relative URL for same-origin requests
+      const url = `/api/auth/gmail/status`;
+      console.log('[DashboardPage] Fetching from:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      console.log('[DashboardPage] Status response:', response.status, response.statusText);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log('[DashboardPage] Gmail status data:', data);
+
       setIsConnected(data.connected);
 
       // If just connected, refresh the Gmail dashboard
-      if (data.connected && searchParams.get('success') === 'gmail_connected') {
+      if (data.connected && searchParams?.get('success') === 'gmail_connected') {
+        console.log('[DashboardPage] Gmail just connected, reloading...');
         // Force a refresh of the Gmail dashboard
         window.location.reload();
       }
     } catch (error) {
-      console.error('Error checking Gmail status:', error);
+      console.error('[DashboardPage] Error checking Gmail status:', error);
+      console.error('[DashboardPage] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        type: error instanceof Error ? error.constructor.name : typeof error
+      });
     }
   };
+
+  const handleViewChange = (value: string | undefined) => {
+    console.log('[DashboardPage] View change requested:', value);
+    if (value) {
+      setView(value as 'kanban' | 'gmail');
+    }
+  };
+
+  console.log('[DashboardPage] Rendering with state:', { view, isConnected, hasNotification: !!notification });
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,7 +170,7 @@ export default function DashboardPage() {
             <ToggleGroup
               type="single"
               value={view}
-              onValueChange={(v) => v && setView(v as 'kanban' | 'gmail')}
+              onValueChange={handleViewChange}
             >
               <ToggleGroupItem value="gmail" aria-label="Gmail view">
                 <Mail className="h-4 w-4 mr-2" />
