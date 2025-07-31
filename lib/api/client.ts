@@ -1,10 +1,25 @@
 import { Deal, KanbanStage, GmailThread, BaseDeal, GmailDealProperties } from '../types';
-import { API_CONFIG } from '../constants';
 import { handleApiError, ApiError } from './errors';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const isExternalAPI = typeof window !== 'undefined' && API_URL && !API_URL.includes(window.location.origin);
 const BASE_URL = isExternalAPI ? API_URL : '';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+// Safe console wrapper to avoid Next.js console interception
+const safeConsole = {
+  log: (...args: unknown[]) => {
+    if (isDevelopment && typeof window !== 'undefined') {
+      window.console.log(...args);
+    }
+  },
+  error: (...args: unknown[]) => {
+    if (isDevelopment && typeof window !== 'undefined') {
+      window.console.warn('[ApiClient Error]', ...args);
+    }
+  }
+};
 
 interface LoginCredentials {
   email: string;
@@ -92,6 +107,11 @@ class ApiClient {
 
     const token = this.getToken();
     const url = `${this.baseUrl}${endpoint}`;
+
+    if (isDevelopment) {
+      safeConsole.log('[ApiClient] Making request to:', url);
+    }
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -105,21 +125,87 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
 
+      if (isDevelopment) {
+        safeConsole.log('[ApiClient] Response received:', {
+          url,
+          status: response.status,
+          ok: response.ok
+        });
+      }
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData: { message?: string; error?: string; code?: string; details?: unknown } = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          // If JSON parsing fails, use default error data
+          errorData = { message: response.statusText };
+        }
+
+        if (isDevelopment) {
+          safeConsole.error('[ApiClient] Request failed:', {
+            url,
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+          });
+        }
         throw new ApiError(
-          errorData.message || `HTTP ${response.status}`,
+          errorData.message || errorData.error || `HTTP ${response.status}`,
           response.status,
           errorData.code,
           errorData.details
         );
       }
 
-      return response.json();
+      // Parse successful response
+      try {
+        return await response.json();
+      } catch (error) {
+        if (isDevelopment) {
+          safeConsole.error('[ApiClient] Failed to parse response:', error);
+        }
+        throw new ApiError(
+          'Invalid JSON response from server',
+          response.status,
+          'PARSE_ERROR'
+        );
+      }
     } catch (error) {
+      if (isDevelopment) {
+        safeConsole.error('[ApiClient] Request error:', {
+          url,
+          error,
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+
       if (error instanceof ApiError) {
         throw error;
       }
+
+      // Handle JSON parsing errors
+      if (error instanceof SyntaxError) {
+        throw new ApiError(
+          'Invalid response format from server',
+          0,
+          'PARSE_ERROR'
+        );
+      }
+
+      // Handle fetch errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        if (isDevelopment) {
+          safeConsole.error('[ApiClient] Network/CORS error detected');
+        }
+        throw new ApiError(
+          'Network error: Unable to connect to the server',
+          0,
+          'NETWORK_ERROR'
+        );
+      }
+
       return handleApiError(error);
     } finally {
       if (requestId) {
@@ -243,8 +329,8 @@ class ApiClient {
     });
   }
 
-  async getGmailThreadsByLabels(): Promise<GmailThread[]> {
-    return this.request<GmailThread[]>('/api/gmail/threads/by-labels');
+  async getGmailThreadsByLabels(): Promise<Record<KanbanStage, GmailThread[]>> {
+    return this.request<Record<KanbanStage, GmailThread[]>>('/api/gmail/threads/by-labels');
   }
 
   async getGmailStatus(): Promise<{ isAuthenticated: boolean; email?: string }> {

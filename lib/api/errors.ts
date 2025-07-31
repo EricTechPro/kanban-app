@@ -1,7 +1,7 @@
 export class ApiError extends Error {
   constructor(
     message: string,
-    public statusCode: number,
+    public status: number,
     public code?: string,
     public details?: unknown
   ) {
@@ -30,7 +30,7 @@ export class AuthorizationError extends ApiError {
 }
 
 export class ValidationError extends ApiError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string = 'Validation error', details?: unknown) {
     super(message, 400, 'VALIDATION_ERROR', details);
   }
 }
@@ -52,6 +52,9 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 export function handleApiError(error: unknown): never {
+  // Log the error for debugging
+  console.warn('[API] Handling error:', error);
+
   if (error instanceof Response) {
     throw new ApiError(
       `HTTP ${error.status}: ${error.statusText}`,
@@ -65,7 +68,7 @@ export function handleApiError(error: unknown): never {
     }
 
     if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-      throw new NetworkError();
+      throw new NetworkError('Network error: Please check your connection');
     }
 
     throw error;

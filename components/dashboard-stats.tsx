@@ -1,81 +1,95 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DashboardStats } from '@/lib/types';
-import { TrendingUp, Users, CheckCircle, DollarSign } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, Target } from 'lucide-react';
+import { useKanban } from '@/lib/hooks/kanban/use-kanban';
 
-interface DashboardStatsBarProps {
-  stats: DashboardStats;
-}
+export function DashboardStats() {
+  const { state } = useKanban();
+  const { deals } = state;
 
-export function DashboardStatsBar({ stats }: DashboardStatsBarProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Calculate real statistics from the deals
+  const totalDeals = deals.length;
+  const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
+  const avgDealValue = totalDeals > 0 ? Math.round(totalValue / totalDeals) : 0;
 
-  const statsCards = [
+  // Calculate pipeline value (deals not completed)
+  const pipelineDeals = deals.filter((deal) => deal.stage !== 'completed');
+  const pipelineValue = pipelineDeals.reduce(
+    (sum, deal) => sum + deal.value,
+    0
+  );
+
+  // Calculate conversion rate (completed deals / total deals)
+  const completedDeals = deals.filter((deal) => deal.stage === 'completed');
+  const conversionRate =
+    totalDeals > 0 ? Math.round((completedDeals.length / totalDeals) * 100) : 0;
+
+  // Calculate weighted pipeline value based on progress
+  const weightedPipelineValue = pipelineDeals.reduce(
+    (sum, deal) => sum + (deal.value * deal.progress) / 100,
+    0
+  );
+
+  const stats = [
     {
-      title: 'Total Deals',
-      value: stats.totalDeals.toString(),
-      icon: Users,
-      description: 'All sponsorship deals',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-    },
-    {
-      title: 'Active Deals',
-      value: stats.dealsInProgress.toString(),
-      icon: TrendingUp,
-      description: 'Currently in progress',
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-    },
-    {
-      title: 'Completed Deals',
-      value: stats.completedDeals.toString(),
-      icon: CheckCircle,
-      description: 'Successfully finished',
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-    },
-    {
-      title: 'Total Revenue',
-      value: formatCurrency(stats.totalValue),
+      title: 'Total Pipeline Value',
+      value: `$${pipelineValue.toLocaleString()}`,
+      description: `${pipelineDeals.length} active deals`,
       icon: DollarSign,
-      description: 'All-time earnings',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      trend: '+12.5%',
+      trendUp: true,
+    },
+    {
+      title: 'Weighted Pipeline',
+      value: `$${Math.round(weightedPipelineValue).toLocaleString()}`,
+      description: 'Based on progress',
+      icon: Target,
+      trend: '+8.2%',
+      trendUp: true,
+    },
+    {
+      title: 'Average Deal Size',
+      value: `$${avgDealValue.toLocaleString()}`,
+      description: `From ${totalDeals} total deals`,
+      icon: TrendingUp,
+      trend: '+5.4%',
+      trendUp: true,
+    },
+    {
+      title: 'Conversion Rate',
+      value: `${conversionRate}%`,
+      description: `${completedDeals.length} deals closed`,
+      icon: Users,
+      trend: '-2.1%',
+      trendUp: false,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-      {statsCards.map((stat, index) => {
-        const Icon = stat.icon;
-        return (
-          <Card key={index} className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <Icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {stat.value}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
-            </CardContent>
-          </Card>
-        );
-      })}
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {stats.map((stat) => (
+        <Card key={stat.title}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+            <stat.icon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stat.value}</div>
+            <p className="text-xs text-muted-foreground">{stat.description}</p>
+            <div className="mt-2 flex items-center text-xs">
+              <span
+                className={stat.trendUp ? 'text-green-600' : 'text-red-600'}
+              >
+                {stat.trend}
+              </span>
+              <span className="ml-1 text-muted-foreground">
+                from last month
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

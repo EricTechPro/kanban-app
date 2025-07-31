@@ -27,15 +27,15 @@ import {
   AlertCircle,
   Tag,
   Inbox,
-  Link2
+  Link2,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
-import { useKanban } from '@/lib/hooks/kanban/use-kanban';
-import { GmailThreadConverter } from '@/lib/utils/gmail-thread-converter';
+import { ApiError } from '@/lib/api/errors';
+
 import { useGmailThreadSync } from '@/lib/hooks/gmail/use-gmail-thread-sync';
 
 // Types
-import { Deal, KanbanStage } from '@/lib/types';
+import { Deal } from '@/lib/types';
 
 interface GmailSyncProps {
   onSyncComplete?: (deals: Deal[]) => void;
@@ -52,11 +52,19 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
   const [gmailConnected, setGmailConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const { addDeal } = useKanban();
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const { syncGmailThreads } = useGmailThreadSync();
 
   useEffect(() => {
-    checkGmailConnection();
+    // Wrap in setTimeout to avoid any initialization race conditions
+    const timer = setTimeout(() => {
+      // Add catch to prevent unhandled promise rejection
+      checkGmailConnection().catch(() => {
+        // Error is already handled inside checkGmailConnection
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const checkGmailConnection = async () => {
@@ -65,7 +73,14 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
       setGmailConnected(status.isAuthenticated);
       setUserEmail(status.email || null);
     } catch (error) {
-      console.error('Failed to check Gmail status:', error);
+      // Use console.warn instead of console.error to avoid Next.js interception
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[GmailSync] Failed to check Gmail status:', error);
+      }
+      setDebugInfo((prev) => prev + `\nGmail status check error: ${error}`);
+      // Don't throw the error, just set disconnected state
+      setGmailConnected(false);
+      setUserEmail(null);
     }
   };
 
@@ -101,7 +116,11 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
         }
       }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect Gmail');
+      setError(
+        err instanceof Error ? err.message : 'Failed to connect to Gmail'
+      );
+      setDebugInfo((prev) => prev + `\nGmail connect error: ${err}`);
+    } finally {
       setIsConnecting(false);
     }
   };
@@ -111,9 +130,25 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
     setError(null);
     setSuccess(null);
     setSyncStatus('Checking Gmail labels...');
+    setDebugInfo(''); // Clear debug info
 
     try {
+      // First check if Gmail is connected
+      if (!gmailConnected) {
+        setError(
+          'Please connect your Gmail account first before setting up labels.'
+        );
+        setDebugInfo(
+          'Gmail is not connected. Click "Connect Gmail" button first.'
+        );
+        return false;
+      }
+
+      setDebugInfo((prev) => prev + '\nCalling ensureKanbanLabels API...');
       const response = await apiClient.ensureKanbanLabels();
+      setDebugInfo(
+        (prev) => prev + `\nAPI Response: ${JSON.stringify(response, null, 2)}`
+      );
 
       // Build a detailed status message
       const { summary } = response;
@@ -130,11 +165,11 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
 
         if (summary.failed?.length > 0) {
           statusMessage += `Failed to create ${summary.failed.length} labels.`;
-          setError(
-            `Some labels failed: ${summary.failed
-              .map((f) => f.label)
-              .join(', ')}`
-          );
+          const failedDetails = summary.failed
+            .map((f) => `${f.label}: ${f.error}`)
+            .join('\n');
+          setError(`Some labels failed:\n${failedDetails}`);
+          setDebugInfo((prev) => prev + `\nFailed labels: ${failedDetails}`);
         } else {
           setSuccess(
             'All Gmail labels are ready! You can now sync your emails.'
@@ -147,9 +182,32 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
       // Return true if we have all labels ready (even if some already existed)
       return summary?.failed?.length === 0;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to setup Gmail labels'
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to setup Gmail labels';
+
+      // Check for specific error types
+      if (err instanceof ApiError && err.status === 401) {
+        setError(
+          'Not authenticated with Gmail. Please connect your Gmail account first.'
+        );
+        setDebugInfo(
+          'Authentication error: Gmail access token not found or expired.'
+        );
+      } else if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.');
+        setDebugInfo(
+          (prev) =>
+            prev + '\nNetwork/CORS error. Check browser console for details.'
+        );
+      } else {
+        setError(errorMessage);
+        setDebugInfo(
+          (prev) =>
+            prev +
+            `\nError details: ${err instanceof Error ? err.stack : String(err)}`
+        );
+      }
+
       return false;
     } finally {
       setIsSettingUpLabels(false);
@@ -180,7 +238,9 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
       const result = await syncGmailThreads();
 
       setSyncProgress(90);
-      setSuccess(`Successfully synced ${result.totalAdded} email threads from Gmail!`);
+      setSuccess(
+        `Successfully synced ${result.totalAdded} email threads from Gmail!`
+      );
       setSyncStatus('Sync complete!');
       setSyncProgress(100);
 
@@ -253,53 +313,83 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Kanban Labels</p>
-              <p className="text-xs text-muted-foreground">
-                Gmail labels for each kanban stage
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={setupKanbanLabels}
-              disabled={isSettingUpLabels}
-            >
-              {isSettingUpLabels ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Setting up...
-                </>
-              ) : (
-                <>
-                  <Tag className="mr-2 h-4 w-4" />
-                  Setup Labels
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Gmail Connection Status */}
+          {!gmailConnected && (
+            <Alert className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Gmail not connected.</strong> Please connect your Gmail
+                account first to use the sync features.
+              </AlertDescription>
+            </Alert>
+          )}
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Email Sync</p>
-              <p className="text-xs text-muted-foreground">
-                Import emails as deals based on their labels
-              </p>
+          {gmailConnected && userEmail && (
+            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              Connected as: <span className="font-medium">{userEmail}</span>
             </div>
-            <Button onClick={syncEmails} disabled={isSyncing}>
-              {isSyncing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Sync Now
-                </>
-              )}
-            </Button>
+          )}
+
+          <div className="flex gap-2 mb-4">
+            {!gmailConnected ? (
+              <Button
+                onClick={connectGmail}
+                disabled={isConnecting}
+                className="flex-1"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Connect Gmail
+                  </>
+                )}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={setupKanbanLabels}
+                  disabled={isSettingUpLabels || isSyncing}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {isSettingUpLabels ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Setting up...
+                    </>
+                  ) : (
+                    <>
+                      <Tag className="mr-2 h-4 w-4" />
+                      Setup Labels
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={syncEmails}
+                  disabled={isSyncing || isSettingUpLabels}
+                  className="flex-1"
+                >
+                  {isSyncing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Sync Emails
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
 
           {error && (
@@ -328,6 +418,16 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
               <li>4. Moving cards will update Gmail labels automatically</li>
             </ol>
           </div>
+
+          {/* Debug Information */}
+          {debugInfo && (
+            <Alert className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <pre className="text-xs whitespace-pre-wrap">{debugInfo}</pre>
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 

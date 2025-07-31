@@ -18,17 +18,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 
-import { DashboardStatsBar } from '@/components/dashboard-stats';
-import { KanbanColumnComponent } from '@/components/kanban-column';
+import { DashboardStats } from '@/components/dashboard-stats';
+import { KanbanColumn } from '@/components/kanban-column';
 import { DealCard } from '@/components/deal-card';
 import { AddDealModal } from '@/components/add-deal-modal';
 import { MoveDealModal } from '@/components/move-deal-modal';
 import { EditDealModal } from '@/components/edit-deal-modal';
 import { GmailSync } from '@/components/gmail-sync';
+import { GmailAutoSync } from '@/components/gmail-auto-sync';
 import { Deal, KanbanStage } from '@/lib/types';
 import { useKanban } from '@/lib/hooks/kanban/use-kanban';
 import { useGmailThreadSync } from '@/lib/hooks/gmail/use-gmail-thread-sync';
-import { useKanbanStats } from '@/lib/hooks/kanban/use-kanban-stats';
 
 import { Grid, List, Calendar, Download, Move, Trash2 } from 'lucide-react';
 
@@ -293,21 +293,18 @@ export function Dashboard() {
   );
 
   // Use the stats hook
-  const dashboardStats = useKanbanStats();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="p-6 space-y-6">
-        <DashboardStatsBar stats={dashboardStats} />
+        <DashboardStats />
+
+        {/* Auto-sync Gmail data on load */}
+        <GmailAutoSync />
 
         {/* Gmail Sync Section */}
         <div className="max-w-md">
-          <GmailSync
-            onSyncComplete={() => {
-              // Refresh the dashboard after sync
-              window.location.reload();
-            }}
-          />
+          <GmailSync />
         </div>
 
         {/* Kanban Board Container */}
@@ -353,13 +350,12 @@ export function Dashboard() {
                       }}
                     >
                       {filteredColumns.map((column) => (
-                        <KanbanColumnComponent
+                        <KanbanColumn
                           key={column.id}
-                          column={column}
-                          onAddDeal={handleAddDeal}
-                          onEditDeal={handleEditDeal}
-                          onMoveDeal={handleMoveDeal}
-                          onDeleteDeal={handleDeleteDeal}
+                          stage={column.id}
+                          title={column.title}
+                          deals={column.deals}
+                          color={column.color}
                         />
                       ))}
                     </div>

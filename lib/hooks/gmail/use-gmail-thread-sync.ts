@@ -14,6 +14,15 @@ export function useGmailThreadSync() {
     setError(null);
 
     try {
+      // First check if Gmail is connected
+      const status = await apiClient.getGmailStatus();
+      if (!status.isAuthenticated) {
+        const errorMsg = 'Gmail is not connected. Please connect your Gmail account first.';
+        setError(errorMsg);
+        console.log('[useGmailThreadSync] Gmail not connected');
+        return { success: false, totalAdded: 0, error: errorMsg };
+      }
+
       // Ensure labels exist
       await apiClient.ensureKanbanLabels();
 
@@ -39,7 +48,8 @@ export function useGmailThreadSync() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sync Gmail threads';
       setError(errorMessage);
-      throw new Error(errorMessage);
+      console.error('[useGmailThreadSync] Error syncing threads:', err);
+      return { success: false, totalAdded: 0, error: errorMessage };
     } finally {
       setIsLoading(false);
     }

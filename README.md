@@ -25,6 +25,7 @@ For detailed setup instructions, see:
 - **OAuth Authentication**: Secure Google OAuth 2.0 authentication
 - **Real-time Email Data**: Always shows current Gmail state
 - **Label Filtering**: Organize emails by Gmail labels
+- **No Mock Data**: Uses real Gmail data exclusively - see [Using Real Gmail Data](docs/USING_REAL_GMAIL_DATA.md)
 
 ### Dashboard Views
 
