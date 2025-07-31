@@ -45,6 +45,7 @@ export function GmailAuth({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Clear messages after timeout
   useEffect(() => {
@@ -53,6 +54,66 @@ export function GmailAuth({
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  const handleConnect = async () => {
+    try {
+      console.log('[GmailAuth] Starting connection process...');
+      setIsConnecting(true);
+      setError(null);
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const authUrlEndpoint = `${baseUrl}/api/auth/gmail/auth-url`;
+      console.log('[GmailAuth] Fetching auth URL from:', authUrlEndpoint);
+
+      const response = await fetch(authUrlEndpoint);
+      console.log('[GmailAuth] Auth URL response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[GmailAuth] Failed to get auth URL:', errorText);
+        throw new Error('Failed to get authentication URL');
+      }
+
+      const data = await response.json();
+      console.log('[GmailAuth] Auth URL data:', {
+        hasAuthUrl: !!data.authUrl,
+        demoMode: data.demoMode,
+        redirectUri: data.redirectUri,
+      });
+
+      // Check if we're in demo mode
+      if (data.demoMode) {
+        console.log('[GmailAuth] Demo mode detected');
+        setError(data.message);
+        setIsConnecting(false);
+        return;
+      }
+
+      if (data.authUrl) {
+        console.log('[GmailAuth] Redirecting to Google OAuth...');
+        window.location.href = data.authUrl;
+      } else {
+        console.error('[GmailAuth] No auth URL received');
+        throw new Error('No authentication URL received');
+      }
+    } catch (err) {
+      console.error('[GmailAuth] Connection error:', err);
+      console.error('[GmailAuth] Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : 'No stack trace',
+      });
+      setError(
+        err instanceof Error ? err.message : 'Failed to connect to Gmail'
+      );
+      setIsConnecting(false);
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -66,26 +127,48 @@ export function GmailAuth({
   const RETRY_DELAY = 1000; // 1 second
 
   const checkAuthStatus = useCallback(async () => {
-    if (isLoading) return;
+    if (isLoading) {
+      console.log('[GmailAuth] Already loading, skipping status check');
+      return;
+    }
 
     try {
+      console.log('[GmailAuth] Checking auth status...');
       setIsLoading(true);
       setError(null);
 
       const token = localStorage.getItem('jwt_token');
+      console.log('[GmailAuth] JWT token present:', !!token);
+
       if (!token) {
+        console.log(
+          '[GmailAuth] No JWT token found, setting disconnected status'
+        );
         setAuthStatus({ connected: false });
         return;
       }
 
-      const response = await fetch('/api/auth/gmail/status', {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const statusEndpoint = `${baseUrl}/api/auth/gmail/status`;
+      console.log('[GmailAuth] Fetching status from:', statusEndpoint);
+
+      const response = await fetch(statusEndpoint, {
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
+      console.log('[GmailAuth] Status response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[GmailAuth] Status data:', data);
+
         setAuthStatus({
           connected: data.isConnected || data.connected,
           email: data.email,
@@ -93,24 +176,40 @@ export function GmailAuth({
           needsRefresh: data.needsRefresh,
         });
         setRetryCount(0); // Reset retry count on success
+        console.log('[GmailAuth] Auth status updated successfully');
       } else if (response.status === 401) {
         // Token is invalid or expired
+        console.log('[GmailAuth] 401 Unauthorized - clearing token');
         localStorage.removeItem('jwt_token');
         setAuthStatus({ connected: false });
         setError('Session expired. Please reconnect.');
       } else {
+        const errorText = await response.text();
+        console.error('[GmailAuth] Status check failed:', errorText);
         throw new Error(`Status check failed: ${response.status}`);
       }
     } catch (err) {
-      console.error('Error checking auth status:', err);
+      console.error('[GmailAuth] Error checking auth status:', err);
+      console.error('[GmailAuth] Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : 'No stack trace',
+      });
       setError('Failed to check connection status');
 
       // Implement retry logic
       if (retryCount < MAX_RETRIES) {
-        setRetryCount((prev) => prev + 1);
+        const nextRetry = retryCount + 1;
+        const delay = RETRY_DELAY * Math.pow(2, retryCount);
+        console.log(
+          `[GmailAuth] Retrying (${nextRetry}/${MAX_RETRIES}) in ${delay}ms...`
+        );
+        setRetryCount(nextRetry);
         setTimeout(() => {
           checkAuthStatus();
-        }, RETRY_DELAY * Math.pow(2, retryCount)); // Exponential backoff
+        }, delay); // Exponential backoff
+      } else {
+        console.error('[GmailAuth] Max retries reached, giving up');
       }
     } finally {
       setIsLoading(false);
@@ -134,7 +233,8 @@ export function GmailAuth({
       setSuccess(null);
 
       // Get OAuth URL from backend
-      const response = await fetch('/api/auth/gmail/auth-url');
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const response = await fetch(`${baseUrl}/api/auth/gmail/auth-url`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -225,7 +325,8 @@ export function GmailAuth({
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/auth/gmail/refresh-token', {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const response = await fetch(`${baseUrl}/api/auth/gmail/refresh-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +357,8 @@ export function GmailAuth({
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/auth/gmail/disconnect', {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const response = await fetch(`${baseUrl}/api/auth/gmail/disconnect`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

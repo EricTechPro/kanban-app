@@ -230,8 +230,6 @@ export function Dashboard() {
   };
 
   const toggleSelectAll = () => {
-
-  const toggleSelectAll = () => {
     if (selectAll) {
       setSelectedDeals([]);
     } else {
@@ -309,8 +307,6 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6">
-
       <div className="p-6 space-y-6">
         <DashboardStatsBar stats={dashboardStats} />
 
@@ -486,6 +482,5 @@ export function Dashboard() {
         deal={dealToEdit}
       />
     </div>
-  </div>
   );
 }

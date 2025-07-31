@@ -2,23 +2,27 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  const isAuthPage = request.nextUrl.pathname === '/';
-  const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard');
+  // Handle CORS for API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const response = NextResponse.next();
 
-  // If user is not authenticated and trying to access dashboard, redirect to login
-  if (!token && isDashboardPage) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
+    // Set CORS headers
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    response.headers.set('Access-Control-Max-Age', '86400');
 
-  // If user is authenticated and trying to access login page, redirect to dashboard
-  if (token && isAuthPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Handle preflight requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 200, headers: response.headers });
+    }
+
+    return response;
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*']
+  matcher: '/api/:path*',
 };

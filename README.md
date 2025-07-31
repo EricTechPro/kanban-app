@@ -2,6 +2,21 @@
 
 A modern kanban board application for managing YouTube sponsorship deals, powered directly by Gmail API. Built with Next.js 15, TypeScript, and shadcn/ui components.
 
+## 🚨 Gmail Connection Setup Required
+
+**The "NetworkError when attempting to fetch resource" error occurs because Google OAuth credentials are not configured.**
+
+### Quick Fix:
+
+1. **Set up Google OAuth credentials** (see [GMAIL_OAUTH_SETUP.md](GMAIL_OAUTH_SETUP.md))
+2. **Update `.env.local`** with your actual credentials
+3. **Restart the development server**
+
+For detailed setup instructions, see:
+
+- [GMAIL_OAUTH_SETUP.md](GMAIL_OAUTH_SETUP.md) - Quick start guide
+- [docs/GMAIL_SETUP.md](docs/GMAIL_SETUP.md) - Complete step-by-step guide
+
 ## 🚀 Features
 
 ### Gmail Integration
@@ -30,133 +45,59 @@ A modern kanban board application for managing YouTube sponsorship deals, powere
   - Published
   - Completed
 - **Drag & Drop**: Move deals between stages
-- **Rich Deal Cards**: Display all deal information
-
-## 🏗️ Simplified Architecture
-
-```
-Frontend (Next.js) → Gmail API
-```
-
-No backend, no database - everything runs in the Next.js app with data from Gmail.
+- **Deal Details**: Track value, contacts, notes, and attachments
+- **Bulk Operations**: Select and move/delete multiple deals
 
 ## 📋 Prerequisites
 
 - Node.js 18+ and npm
-- Google Cloud Console account for OAuth credentials
-- Gmail account
+- Google account
+- Google Cloud Console access (free)
 
 ## 🛠️ Installation
 
-1. **Clone the repository**:
+1. **Clone the repository**
 
    ```bash
    git clone <repository-url>
    cd kanban-app
    ```
 
-2. **Install dependencies**:
+2. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**:
-   Create a `.env.local` file:
+3. **Set up environment variables**
 
-   ```env
-   GOOGLE_CLIENT_ID=your-client-id
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   GOOGLE_CALLBACK_URL=http://localhost:3000/auth/callback
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   ```bash
+   cp .env.example .env.local
    ```
 
-4. **Configure Google OAuth**:
-   - Go to [Google Cloud Console](https://console.cloud.google.com)
-   - Create a new project or select existing
-   - Enable Gmail API
-   - Create OAuth 2.0 credentials
-   - Add `http://localhost:3000/auth/callback` to authorized redirect URIs
+4. **Configure Google OAuth** (see [GMAIL_OAUTH_SETUP.md](GMAIL_OAUTH_SETUP.md))
 
-## 🚀 Running the Application
+5. **Run the development server**
 
-```bash
-npm run dev
-```
+   ```bash
+   npm run dev
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 📁 Project Structure
-
-```
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes for Gmail integration
-│   │   ├── auth/gmail/    # Gmail OAuth endpoints
-│   │   └── gmail/         # Gmail data endpoints
-│   ├── auth/              # Authentication pages
-│   ├── dashboard/         # Main dashboard page
-│   └── page.tsx           # Landing page
-├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   ├── gmail-auth.tsx    # Gmail authentication component
-│   ├── gmail-dashboard.tsx # Gmail email viewer
-│   └── dashboard.tsx     # Kanban board component
-├── lib/                  # Utility functions
-└── docs/                 # Documentation
-```
-
-## 🔑 Key Features Explained
-
-### Gmail OAuth Flow
-
-1. User clicks "Connect Gmail"
-2. Redirected to Google OAuth consent
-3. After approval, redirected back to app
-4. Tokens stored in secure HTTP-only cookies
-5. App can now access Gmail data
-
-### API Routes
-
-- `/api/auth/gmail/auth-url` - Get OAuth URL
-- `/api/auth/gmail/callback` - Handle OAuth callback
-- `/api/auth/gmail/status` - Check connection status
-- `/api/gmail/emails` - Fetch emails
-- `/api/gmail/labels` - Fetch labels
-
-## 🎨 UI Components
-
-Built with [shadcn/ui](https://ui.shadcn.com/) for a modern, accessible interface:
-
-- Cards for displaying content
-- Buttons with multiple variants
-- Forms with validation
-- Modals and dialogs
-- Toast notifications
-- And more...
-
-## 🔒 Security
-
-- OAuth tokens stored in HTTP-only cookies
-- No user data stored on servers
-- Direct API communication with Gmail
-- Secure authentication flow
-
-## 📝 License
-
-MIT License - see LICENSE file for details
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 🐛 Known Issues
-
-- Gmail API rate limits apply
-- Requires active internet connection
-- Limited to Gmail features
+6. **Open the application**
+   - Navigate to http://localhost:3000
+   - Click "Connect Gmail" to authenticate
 
 ## 📚 Documentation
 
-- [Simplified Architecture](docs/SIMPLIFIED_ARCHITECTURE.md)
-- [Gmail Integration](docs/GMAIL_INTEGRATION.md)
-- [Development Workflow](docs/development/Development_Workflow.md)
+- [Quick Start Guide](docs/QUICK_START.md)
+- [Gmail Setup Guide](docs/GMAIL_SETUP.md)
+- [API Reference](docs/API_REFERENCE.md)
+- [Architecture Overview](docs/architecture.md)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+## 📄 License
+
+This project is licensed under the MIT License.

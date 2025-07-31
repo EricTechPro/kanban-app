@@ -63,7 +63,8 @@ export default function GmailDashboard() {
 
   const checkGmailStatus = async () => {
     try {
-      const response = await fetch('/api/auth/gmail/status');
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const response = await fetch(`${baseUrl}/api/auth/gmail/status`);
       const data = await response.json();
       setIsConnected(data.connected);
     } catch (error) {
@@ -73,7 +74,8 @@ export default function GmailDashboard() {
 
   const fetchLabels = async () => {
     try {
-      const response = await fetch('/api/gmail/labels');
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const response = await fetch(`${baseUrl}/api/gmail/labels`);
       if (response.ok) {
         const data = await response.json();
         setLabels(data.labels || []);
