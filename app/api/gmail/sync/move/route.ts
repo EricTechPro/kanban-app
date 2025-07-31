@@ -16,7 +16,7 @@ const STAGE_TO_LABEL = {
 };
 
 export async function OPTIONS() {
-  return new NextResponse(null, { 
+  return new NextResponse(null, {
     status: 200,
     headers: corsHeaders
   });
@@ -24,7 +24,7 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   console.log('=== Gmail Move Email Started ===');
-  
+
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('gmail_access_token')?.value;
@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
     });
 
     const labels = labelsResponse.data.labels || [];
-    
+
     // Find label IDs
     const fromLabelName = STAGE_TO_LABEL[fromStage as keyof typeof STAGE_TO_LABEL];
     const toLabelName = STAGE_TO_LABEL[toStage as keyof typeof STAGE_TO_LABEL];
-    
+
     const fromLabel = labels.find(l => l.name === fromLabelName);
     const toLabel = labels.find(l => l.name === toLabelName);
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('=== Gmail Move Email Completed ===');
-    
+
     return NextResponse.json(
       { success: true },
       { headers: corsHeaders }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[POST] Error moving email:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to move email',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

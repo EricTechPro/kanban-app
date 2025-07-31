@@ -16,7 +16,7 @@ const STAGE_TO_LABEL = {
 };
 
 export async function OPTIONS() {
-  return new NextResponse(null, { 
+  return new NextResponse(null, {
     status: 200,
     headers: corsHeaders
   });
@@ -24,10 +24,11 @@ export async function OPTIONS() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { stage: string } }
+  { params }: { params: Promise<{ stage: string }> }
 ) {
-  console.log(`=== Gmail Get Emails by Stage: ${params.stage} ===`);
-  
+  const { stage } = await params;
+  console.log(`=== Gmail Get Emails by Stage: ${stage} ===`);
+
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('gmail_access_token')?.value;
@@ -41,7 +42,7 @@ export async function GET(
       );
     }
 
-    const labelName = STAGE_TO_LABEL[params.stage as keyof typeof STAGE_TO_LABEL];
+    const labelName = STAGE_TO_LABEL[stage as keyof typeof STAGE_TO_LABEL];
     if (!labelName) {
       return NextResponse.json(
         { error: 'Invalid stage' },
@@ -72,15 +73,15 @@ export async function GET(
     });
 
     if (!messages.data.messages || messages.data.messages.length === 0) {
-      console.log(`[GET] No emails found for stage: ${params.stage}`);
+      console.log(`[GET] No emails found for stage: ${stage}`);
       return NextResponse.json([], { headers: corsHeaders });
     }
 
-    console.log(`[GET] Found ${messages.data.messages.length} emails for stage: ${params.stage}`);
+    console.log(`[GET] Found ${messages.data.messages.length} emails for stage: ${stage}`);
 
     // Fetch full details for each message
     const deals = [];
-    
+
     for (const message of messages.data.messages) {
       try {
         const fullMessage = await gmail.users.messages.get({
@@ -93,7 +94,7 @@ export async function GET(
         const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
         const from = headers.find(h => h.name === 'From')?.value || 'Unknown';
         const date = headers.find(h => h.name === 'Date')?.value || '';
-        
+
         // Extract sender name and email
         const fromMatch = from.match(/^(.*?)\s*<(.+?)>$/);
         const senderName = fromMatch ? fromMatch[1].replace(/"/g, '') : from.split('@')[0];
@@ -123,7 +124,7 @@ export async function GET(
           title: subject,
           company: senderName,
           email: senderEmail,
-          stage: params.stage,
+          stage: stage,
           value: 0,
           description: bodyPreview,
           createdAt: new Date(date).toISOString(),
@@ -136,13 +137,13 @@ export async function GET(
       }
     }
 
-    console.log(`[GET] Successfully processed ${deals.length} deals for stage: ${params.stage}`);
-    
+    console.log(`[GET] Successfully processed ${deals.length} deals for stage: ${stage}`);
+
     return NextResponse.json(deals, { headers: corsHeaders });
   } catch (error) {
     console.error('[GET] Error fetching emails by stage:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch emails',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

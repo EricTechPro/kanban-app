@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
@@ -201,5 +201,20 @@ function CallbackContent() {
 }
 
 export default function CallbackPage() {
-  return <CallbackContent />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <Card className="w-full max-w-md">
+            <CardContent className="flex flex-col items-center space-y-4 p-8">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+              <p className="text-center text-sm text-gray-600">Loading...</p>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <CallbackContent />
+    </Suspense>
+  );
 }

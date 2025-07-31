@@ -16,7 +16,7 @@ export async function OPTIONS() {
 export async function GET() {
   try {
     console.log('=== Gmail Auth Status Check Started ===');
-    
+
     const cookieStore = await cookies();
     const token = cookieStore.get('gmail_access_token');
     const email = cookieStore.get('gmail_email');
@@ -41,7 +41,7 @@ export async function GET() {
       const expiryDate = new Date(expiry.value);
       const now = new Date();
       const isExpired = expiryDate < now;
-      
+
       console.log('[GET] Token expiry check:', {
         expiryDate: expiryDate.toISOString(),
         currentTime: now.toISOString(),
@@ -73,7 +73,7 @@ export async function GET() {
     console.error('[GET] Error message:', error instanceof Error ? error.message : 'Unknown error');
     console.error('[GET] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     console.error('[GET] Full error object:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to check authentication status' },
       { status: 500, headers: corsHeaders }

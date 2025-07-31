@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 import { cookies } from 'next/headers';
 import { corsHeaders } from '@/lib/cors';
 
-const KANBAN_STAGES = {
+const KANBAN_STAGES: Record<string, string> = {
   'kanban/prospecting': 'prospecting',
   'kanban/initial-contact': 'initial-contact',
   'kanban/negotiation': 'negotiation',
@@ -16,7 +16,7 @@ const KANBAN_STAGES = {
 };
 
 export async function OPTIONS() {
-  return new NextResponse(null, { 
+  return new NextResponse(null, {
     status: 200,
     headers: corsHeaders
   });
@@ -24,7 +24,7 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   console.log('=== Gmail Emails Sync Started ===');
-  
+
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('gmail_access_token')?.value;
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch full details for each message
     const deals = [];
-    
+
     for (const message of messages.data.messages) {
       try {
         const fullMessage = await gmail.users.messages.get({
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
         const from = headers.find(h => h.name === 'From')?.value || 'Unknown';
         const date = headers.find(h => h.name === 'Date')?.value || '';
-        
+
         // Extract sender name and email
         const fromMatch = from.match(/^(.*?)\s*<(.+?)>$/);
         const senderName = fromMatch ? fromMatch[1].replace(/"/g, '') : from.split('@')[0];
@@ -91,14 +91,14 @@ export async function GET(request: NextRequest) {
         // Get the stage from labels
         const labels = fullMessage.data.labelIds || [];
         let stage = 'prospecting'; // default stage
-        
+
         for (const labelId of labels) {
           // Get label details to find the name
           const labelDetails = await gmail.users.labels.get({
             userId: 'me',
             id: labelId,
           });
-          
+
           const labelName = labelDetails.data.name;
           if (labelName && KANBAN_STAGES[labelName]) {
             stage = KANBAN_STAGES[labelName];
@@ -145,12 +145,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`[GET] Successfully processed ${deals.length} deals`);
     console.log('=== Gmail Emails Sync Completed ===');
-    
+
     return NextResponse.json(deals, { headers: corsHeaders });
   } catch (error) {
     console.error('[GET] Error syncing emails:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to sync emails',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

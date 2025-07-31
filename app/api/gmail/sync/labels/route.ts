@@ -16,7 +16,7 @@ const KANBAN_STAGES = {
 };
 
 export async function OPTIONS() {
-  return new NextResponse(null, { 
+  return new NextResponse(null, {
     status: 200,
     headers: corsHeaders
   });
@@ -24,7 +24,7 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   console.log('=== Gmail Labels Sync Started ===');
-  
+
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('gmail_access_token')?.value;
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     // Check if parent "kanban" label exists
     let kanbanLabel = existingLabels.find(label => label.name === 'kanban');
-    
+
     if (!kanbanLabel) {
       console.log('[POST] Creating parent "kanban" label...');
       const createResponse = await gmail.users.labels.create({
@@ -88,11 +88,11 @@ export async function POST(request: NextRequest) {
     };
 
     // Create or verify stage labels
-    const stageLabels: Record<string, any> = {};
-    
+    const stageLabels: Record<string, unknown> = {};
+
     for (const [stage, labelName] of Object.entries(KANBAN_STAGES)) {
       const existingStageLabel = existingLabels.find(label => label.name === labelName);
-      
+
       if (existingStageLabel) {
         console.log(`[POST] Label already exists: ${labelName}`);
         stageLabels[stage] = existingStageLabel;
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('=== Gmail Labels Sync Completed ===');
-    
+
     return NextResponse.json(
       {
         parentLabel: kanbanLabel,
@@ -139,8 +139,8 @@ export async function POST(request: NextRequest) {
           existing: results.existing,
           failed: results.failed,
         },
-        message: results.failed.length > 0 
-          ? `Completed with ${results.failed.length} errors` 
+        message: results.failed.length > 0
+          ? `Completed with ${results.failed.length} errors`
           : 'All kanban labels are ready!',
       },
       { headers: corsHeaders }
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[POST] Error in labels sync:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to sync labels',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -157,8 +157,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function getColorForStage(stage: string): any {
-  const colors: Record<string, any> = {
+function getColorForStage(stage: string): { backgroundColor: string; textColor: string; } | undefined {
+  const colors: Record<string, { backgroundColor: string; textColor: string; }> = {
     'prospecting': {
       backgroundColor: '#10b981', // Green
       textColor: '#ffffff'
@@ -196,7 +196,7 @@ function getColorForStage(stage: string): any {
       textColor: '#ffffff'
     }
   };
-  
+
   return colors[stage] || {
     backgroundColor: '#666666',
     textColor: '#ffffff'

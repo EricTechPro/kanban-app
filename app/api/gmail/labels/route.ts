@@ -11,7 +11,7 @@ const oauth2Client = new google.auth.OAuth2(
 export async function GET() {
   try {
     console.log('[Gmail Labels API] Request received');
-    
+
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('gmail_access_token')?.value;
     const refreshToken = cookieStore.get('gmail_refresh_token')?.value;

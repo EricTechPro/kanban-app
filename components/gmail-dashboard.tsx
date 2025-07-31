@@ -42,7 +42,7 @@ class GmailErrorBoundary extends React.Component<
       error: error.toString(),
       componentStack: errorInfo.componentStack,
       errorBoundary: 'GmailDashboard',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -51,11 +51,14 @@ class GmailErrorBoundary extends React.Component<
       return (
         <Card className="bg-red-50 border-red-200">
           <CardHeader>
-            <CardTitle className="text-red-800">Gmail Dashboard Error</CardTitle>
+            <CardTitle className="text-red-800">
+              Gmail Dashboard Error
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-red-700 mb-2">
-              {this.state.error?.message || 'An error occurred loading the Gmail dashboard'}
+              {this.state.error?.message ||
+                'An error occurred loading the Gmail dashboard'}
             </p>
             <Button
               onClick={() => window.location.reload()}
@@ -75,7 +78,7 @@ class GmailErrorBoundary extends React.Component<
 
 function GmailDashboardContent() {
   console.log('[GmailDashboard] Component mounting');
-  
+
   const [emails, setEmails] = useState<Email[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +96,7 @@ function GmailDashboardContent() {
     console.log('[GmailDashboard] Fetching emails...');
     setLoading(true);
     setError(null);
-    
+
     try {
       let query = 'is:unread';
       if (selectedLabel) {
@@ -101,7 +104,9 @@ function GmailDashboardContent() {
       }
 
       // Use relative URL for same-origin requests
-      const url = `/api/gmail/emails?q=${encodeURIComponent(query)}&maxResults=20`;
+      const url = `/api/gmail/emails?q=${encodeURIComponent(
+        query
+      )}&maxResults=20`;
       console.log('[GmailDashboard] Fetching emails from:', url);
 
       const response = await fetch(url, {
@@ -109,32 +114,44 @@ function GmailDashboardContent() {
         credentials: 'same-origin', // Changed from 'include' to 'same-origin'
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
       });
-      console.log('[GmailDashboard] Emails response:', response.status, response.statusText);
+      console.log(
+        '[GmailDashboard] Emails response:',
+        response.status,
+        response.statusText
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to fetch emails: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.error ||
+            `Failed to fetch emails: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
       console.log('[GmailDashboard] Emails data:', {
         emailCount: data.emails?.length || 0,
-        hasEmails: !!data.emails
+        hasEmails: !!data.emails,
       });
 
       setEmails(data.emails || []);
     } catch (error) {
       console.error('[GmailDashboard] Error fetching emails:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch emails');
+      setError(
+        error instanceof Error ? error.message : 'Failed to fetch emails'
+      );
     } finally {
       setLoading(false);
     }
   }, [selectedLabel]);
 
   useEffect(() => {
-    console.log('[GmailDashboard] Email fetch effect running, isConnected:', isConnected);
+    console.log(
+      '[GmailDashboard] Email fetch effect running, isConnected:',
+      isConnected
+    );
     if (isConnected) {
       fetchEmails();
     }
@@ -153,9 +170,13 @@ function GmailDashboardContent() {
         credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
       });
-      console.log('[GmailDashboard] Status response:', response.status, response.statusText);
+      console.log(
+        '[GmailDashboard] Status response:',
+        response.status,
+        response.statusText
+      );
 
       if (!response.ok) {
         throw new Error(`Status check failed: ${response.status}`);
@@ -173,29 +194,36 @@ function GmailDashboardContent() {
 
   const fetchLabels = async () => {
     console.log('[GmailDashboard] Fetching labels...');
-    
+
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
       const url = `${baseUrl}/api/gmail/labels`;
       console.log('[GmailDashboard] Labels URL:', url);
-      
+
       const response = await fetch(url, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
       });
-      console.log('[GmailDashboard] Labels response:', response.status, response.statusText);
-      
+      console.log(
+        '[GmailDashboard] Labels response:',
+        response.status,
+        response.statusText
+      );
+
       if (response.ok) {
         const data = await response.json();
         console.log('[GmailDashboard] Labels data:', {
           labelCount: data.labels?.length || 0,
-          hasLabels: !!data.labels
+          hasLabels: !!data.labels,
         });
         setLabels(data.labels || []);
       } else {
-        console.warn('[GmailDashboard] Failed to fetch labels:', response.status);
+        console.warn(
+          '[GmailDashboard] Failed to fetch labels:',
+          response.status
+        );
       }
     } catch (error) {
       console.error('[GmailDashboard] Error fetching labels:', error);
@@ -249,7 +277,7 @@ function GmailDashboardContent() {
     labelCount: labels.length,
     loading,
     hasError: !!error,
-    selectedLabel
+    selectedLabel,
   });
 
   // ... existing code ...
@@ -297,7 +325,9 @@ function GmailDashboardContent() {
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">Gmail Dashboard</h2>
         <Button onClick={handleRefresh} disabled={loading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+          />
           Refresh
         </Button>
       </div>
@@ -349,7 +379,9 @@ function GmailDashboardContent() {
             <Card key={email.id} className="hover:shadow-md transition-shadow">
               <CardContent className="py-4">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-lg">{email.subject || '(No subject)'}</h3>
+                  <h3 className="font-semibold text-lg">
+                    {email.subject || '(No subject)'}
+                  </h3>
                   <span className="text-sm text-muted-foreground">
                     {formatDate(email.date)}
                   </span>

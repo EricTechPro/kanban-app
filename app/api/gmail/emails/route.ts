@@ -11,7 +11,7 @@ const oauth2Client = new google.auth.OAuth2(
 export async function GET(request: Request) {
   try {
     console.log('[Gmail Emails API] Request received');
-    
+
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('gmail_access_token')?.value;
     const refreshToken = cookieStore.get('gmail_refresh_token')?.value;
@@ -103,7 +103,7 @@ export async function GET(request: Request) {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
     });
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch emails' },
       { status: 500 }
