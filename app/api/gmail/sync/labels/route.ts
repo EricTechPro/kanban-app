@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
               name: labelName,
               labelListVisibility: 'labelShow',
               messageListVisibility: 'show',
-              color: getColorForStage(stage),
+              ...getColorForStage(stage),
             },
           });
           stageLabels[stage] = createResponse.data;
@@ -157,48 +157,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function getColorForStage(stage: string): { backgroundColor: string; textColor: string; } | undefined {
-  const colors: Record<string, { backgroundColor: string; textColor: string; }> = {
-    'prospecting': {
-      backgroundColor: '#10b981', // Green
-      textColor: '#ffffff'
-    },
-    'initial-contact': {
-      backgroundColor: '#3b82f6', // Blue
-      textColor: '#ffffff'
-    },
-    'negotiation': {
-      backgroundColor: '#f59e0b', // Amber
-      textColor: '#ffffff'
-    },
-    'contract-sent': {
-      backgroundColor: '#8b5cf6', // Violet
-      textColor: '#ffffff'
-    },
-    'contract-signed': {
-      backgroundColor: '#ec4899', // Pink
-      textColor: '#ffffff'
-    },
-    'content-creation': {
-      backgroundColor: '#06b6d4', // Cyan
-      textColor: '#ffffff'
-    },
-    'content-review': {
-      backgroundColor: '#f97316', // Orange
-      textColor: '#ffffff'
-    },
-    'published': {
-      backgroundColor: '#84cc16', // Lime
-      textColor: '#ffffff'
-    },
-    'completed': {
-      backgroundColor: '#6b7280', // Gray
-      textColor: '#ffffff'
-    }
+function getColorForStage(stage: string): { labelColor?: string } | undefined {
+  // Gmail color IDs mapped to stages
+  const colorMap: Record<string, string> = {
+    'prospecting': '11',      // Red
+    'initial-contact': '18',  // Blue
+    'negotiation': '13',      // Yellow
+    'contract-sent': '15',    // Gray
+    'contract-signed': '17',  // Green
+    'content-creation': '20', // Pink
+    'content-review': '16',   // Orange
+    'published': '19',        // Purple
+    'completed': '14'         // Cyan
   };
 
-  return colors[stage] || {
-    backgroundColor: '#666666',
-    textColor: '#ffffff'
+  const colorId = colorMap[stage];
+  if (colorId) {
+    return {
+      labelColor: colorId
+    };
+  }
+
+  // Default color if stage not found
+  return {
+    labelColor: '0' // Default gray
   };
 }

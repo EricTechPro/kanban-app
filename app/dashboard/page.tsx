@@ -8,6 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Kanban, Mail } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle } from 'lucide-react';
+import { KanbanProvider } from '@/lib/kanban-context';
 
 function DashboardContent() {
   console.log('[DashboardPage] Component mounting');
@@ -223,7 +224,9 @@ function DashboardContent() {
         ) : view === 'gmail' ? (
           <GmailDashboard />
         ) : (
-          <Dashboard />
+          <KanbanProvider>
+            <Dashboard />
+          </KanbanProvider>
         )}
       </div>
     </div>

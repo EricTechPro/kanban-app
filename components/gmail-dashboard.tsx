@@ -98,15 +98,16 @@ function GmailDashboardContent() {
     setError(null);
 
     try {
-      let query = 'is:unread';
+      let url = '/api/gmail/emails?';
+
       if (selectedLabel) {
-        query = `label:${selectedLabel}`;
+        // When a label is selected, use labelIds parameter instead of query
+        url += `labelIds=${encodeURIComponent(selectedLabel)}&maxResults=20`;
+      } else {
+        // Default to unread emails
+        url += `q=${encodeURIComponent('is:unread')}&maxResults=20`;
       }
 
-      // Use relative URL for same-origin requests
-      const url = `/api/gmail/emails?q=${encodeURIComponent(
-        query
-      )}&maxResults=20`;
       console.log('[GmailDashboard] Fetching emails from:', url);
 
       const response = await fetch(url, {
