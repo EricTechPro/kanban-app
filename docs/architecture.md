@@ -1,266 +1,209 @@
-# **Brownfield Enhancement Architecture**
+# Application Architecture
 
-## **YouTube Sponsorship Workflow \- Gmail Integration**
+## Overview
 
-### **Document Information**
+The YouTube Sponsorship Workflow application uses a simplified, modern architecture that leverages Gmail as the primary data source, eliminating the need for a backend server or database.
 
-* **Version**: 1.0  
-* **Date**: July 2025  
-* **Architect**: Winston  
-* **Status**: Approved for Development
+## Architecture Diagram
 
-### **Section 1: Introduction**
+```
+┌─────────────────┐
+│   Browser       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Next.js App    │
+│  (Frontend)     │
+├─────────────────┤
+│  API Routes     │
+│  (Backend)      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Gmail API      │
+│  (Data Source)  │
+└─────────────────┘
+```
 
-This document outlines the architectural approach for enhancing the YouTube Sponsorship Workflow application with a comprehensive Gmail integration. Its primary goal is to serve as the guiding architectural blueprint for AI-driven development of these new features while ensuring seamless and safe integration with the existing system.
+## Key Components
 
-#### Existing Project Analysis
+### 1. Frontend (Next.js App Router)
 
-* **Current Project State**:  
-  * **Primary Purpose**: A Kanban board for managing YouTube sponsorship deals.  
-  * **Current Tech Stack**: The frontend is built with Next.js 15, TypeScript, and shadcn/ui. State is managed via React Context and data persists in client-side localStorage.  
-  * **Architecture Style**: A client-side, single-page application (SPA) with a basic authentication system.  
-* **Identified Constraints**: The architecture must be budget-conscious regarding API calls, scalable to handle large email volumes, and highly secure due to the handling of sensitive email data.
+The frontend is built with Next.js 15 using the App Router pattern:
 
-### **Section 2: Enhancement Scope and Integration Strategy**
+```
+app/
+├── api/                    # API routes
+├── auth/                   # Authentication pages
+├── dashboard/              # Main dashboard
+└── page.tsx               # Landing page
+```
 
-#### Enhancement Overview
+### 2. API Routes
 
-* **Enhancement Type**: Major Feature Addition & System Integration.  
-* **Scope**: Integrate Gmail as a primary data source, introduce a new AI summarization service, and build a bidirectional data synchronization mechanism.  
-* **Integration Impact**: High. This requires a new backend service, a database, and significant changes to the data management and user onboarding flows.
+API routes handle all Gmail interactions:
 
-#### Integration Approach
+```
+app/api/
+├── auth/gmail/
+│   ├── auth-url/          # Generate OAuth URL
+│   ├── callback/          # Handle OAuth callback
+│   ├── status/            # Check connection status
+│   ├── disconnect/        # Disconnect Gmail
+│   └── refresh-token/     # Refresh access token
+└── gmail/
+    ├── emails/            # Fetch emails
+    └── labels/            # Fetch labels
+```
 
-* **Code Integration Strategy**: We will build a **new, separate microservice** responsible for all Gmail API interactions, background synchronization, and AI summarization processing. This decouples heavy background tasks from the frontend, allows independent scaling, and enhances security.  
-* **Database Integration**: A new PostgreSQL database will be introduced to store user account information, encrypted Gmail tokens, email metadata, AI summaries, and sync state.  
-* **UI Integration**: The Next.js frontend will communicate with the new backend microservice via a secure **tRPC API**.
+### 3. Components
 
-#### Compatibility Requirements
+React components organized by feature:
 
-* **Hybrid Mode**: The architecture will support both manual deals (migrated from localStorage to the database) and Gmail-integrated deals.  
-* **Backward Compatibility**: For users who do not opt into the Gmail integration, the existing functionality will be preserved. A one-time migration path will be provided for existing data.
+```
+components/
+├── ui/                    # shadcn/ui components
+├── gmail-auth.tsx         # Gmail authentication
+├── gmail-dashboard.tsx    # Email viewer
+├── dashboard.tsx          # Kanban board
+└── kanban-column.tsx      # Kanban columns
+```
 
-### **Section 3: Tech Stack Alignment**
+## Data Flow
 
-#### Existing Technology Stack (Frontend)
+### Authentication Flow
 
-| Category | Current Technology | Version | Usage in Enhancement |
-| :---- | :---- | :---- | :---- |
-| **Framework** | Next.js | 15.x | Render all new UI components and manage routing. |
-| **Language** | TypeScript | 5.x | Ensure type safety for all new frontend code. |
-| **UI Components** | shadcn/ui | latest | Build all new UI elements for visual consistency. |
-| **State Mngmt** | React Context | 18.x | Manage UI-specific state on the client side. |
+1. User clicks "Connect Gmail"
+2. Frontend calls `/api/auth/gmail/auth-url`
+3. User redirected to Google OAuth
+4. Google redirects to `/auth/callback`
+5. Callback exchanges code for tokens
+6. Tokens stored in HTTP-only cookies
+7. User redirected to dashboard
 
-#### New Technology Additions (Backend Microservice)
+### Data Fetching Flow
 
-| Technology | Version | Purpose | Rationale |
-| :---- | :---- | :---- | :---- |
-| **NestJS** | 10.x | Backend framework for the microservice. | A robust, scalable, and TypeScript-first framework ideal for this use case. |
-| **tRPC** | 11.x | API communication layer. | Provides end-to-end type safety between the client and server. |
-| **PostgreSQL** | 16.x | Primary database. | Reliable, ACID-compliant database perfect for structured user and deal data. |
-| **Prisma** | latest | ORM for database interaction. | Excellent TypeScript integration and robust schema migration tools. |
-| **Redis** | 7.x | Caching layer and queue backend. | High-performance store for caching AI summaries and managing background jobs. |
-| **BullMQ** | latest | Queue system for background jobs. | A robust, Redis-based queue system for managing asynchronous tasks like Gmail sync. |
-| **OpenAI API** | latest | AI service for email summarization. | Leverages powerful GPT models for high-quality text summarization. |
-| **Docker** | latest | Containerization for the microservice. | Ensures consistent environments from local development to production. |
+1. Component requests data (e.g., emails)
+2. API route retrieves tokens from cookies
+3. API route calls Gmail API with tokens
+4. Gmail API returns data
+5. API route formats and returns data
+6. Component displays data
 
-### **Section 4: Data Models and Schema Changes**
+## Security
 
-The following Prisma schema defines the core tables for the PostgreSQL database, enabling the hybrid MANUAL vs. GMAIL deal tracking system.
+### OAuth 2.0
 
-// schema.prisma
+- Industry-standard authentication
+- Secure token exchange
+- Granular permission scopes
 
-datasource db {  
-  provider \= "postgresql"  
-  url      \= env("DATABASE\_URL")  
-}
+### Token Storage
 
-generator client {  
-  provider \= "prisma-client-js"  
-}
+- Access tokens in HTTP-only cookies
+- Refresh tokens for long-term access
+- No tokens exposed to client-side JavaScript
 
-model User {  
-  id                    String    @id @default(cuid())  
-  email                 String    @unique  
-  name                  String?  
-  encryptedAccessToken  String?  
-  encryptedRefreshToken String?  
-  tokenEncryptionKey    String?  
-  tokenExpiry           DateTime?  
-  defaultAIPrompt       String?  
-  syncFrequency         Int?      @default(300)  
-  deals                 Deal\[\]  
-  syncState             SyncState?  
-  createdAt             DateTime  @default(now())  
-  updatedAt             DateTime  @updatedAt  
-}
+### API Security
 
-model SyncState {  
-  id                    String    @id @default(cuid())  
-  lastSyncTimestamp     DateTime  @default(now())  
-  isSyncing             Boolean   @default(false)  
-  lastSyncError         String?  
-  consecutiveFailures   Int       @default(0)  
-  user                  User      @relation(fields: \[userId\], references: \[id\])  
-  userId                String    @unique  
-  createdAt             DateTime  @default(now())  
-  updatedAt             DateTime  @updatedAt  
-}
+- All Gmail calls server-side
+- No direct client-to-Gmail communication
+- Rate limiting considerations
 
-model Deal {  
-  id                    String       @id @default(cuid())  
-  title                 String  
-  source                DealSource   @default(MANUAL)  
-  value                 Float?  
-  priority              String?  
-  stage                 String       @default("1-Prospecting")  
-  dueDate               DateTime?  
-  startDate             DateTime?  
-  progress              Int?         @default(0)  
-  tags                  String\[\]     @default(\[\])  
-  deliverables          String\[\]     @default(\[\])  
-  gmailMessageId        String?      @unique  
-  gmailThreadId         String?  
-  emailSubject          String?  
-  emailSender           String?  
-  emailReceivedAt       DateTime?  
-  lastSyncedAt          DateTime?  
-  syncStatus            SyncStatus   @default(SYNCED)  
-  user                  User         @relation(fields: \[userId\], references: \[id\])  
-  userId                String  
-  brand                 Brand?       @relation(fields: \[brandId\], references: \[id\])  
-  brandId               String?  
-  summary               AISummary?  
-  history               DealHistory\[\]  
-  createdAt             DateTime     @default(now())  
-  updatedAt             DateTime     @updatedAt  
-  @@index(\[userId, stage\])  
-  @@index(\[gmailMessageId\])  
-  @@index(\[source, userId\])  
-  @@index(\[updatedAt\])  
-  @@index(\[syncStatus\])  
-}
+## Technology Stack
 
-model Brand {  
-  id                    String @id @default(cuid())  
-  name                  String  
-  email                 String @unique  
-  domain                String?  
-  deals                 Deal\[\]  
-  createdAt             DateTime @default(now())  
-  updatedAt             DateTime @updatedAt  
-  @@index(\[email\])  
-  @@index(\[domain\])  
-}
+### Frontend
 
-model AISummary {  
-  id                    String   @id @default(cuid())  
-  content               String  
-  promptUsed            String  
-  promptVersion         String?  
-  modelUsed             String  
-  tokensUsed            Int?  
-  processingTimeMs      Int?  
-  costUsd               Float?  
-  userRating            Int?  
-  userFeedback          String?  
-  deal                  Deal     @relation(fields: \[dealId\], references: \[id\])  
-  dealId                String   @unique  
-  createdAt             DateTime @default(now())  
-  updatedAt             DateTime @updatedAt  
-  @@index(\[createdAt\])  
-  @@index(\[modelUsed, promptUsed\])  
-  @@index(\[costUsd\])  
-}
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **State Management**: React hooks
 
-model DealHistory {  
-  id                    String   @id @default(cuid())  
-  dealId                String  
-  action                String  
-  oldValue              Json?  
-  newValue              Json?  
-  source                String  
-  metadata              Json?  
-  deal                  Deal     @relation(fields: \[dealId\], references: \[id\])  
-  createdAt             DateTime @default(now())  
-  @@index(\[dealId, createdAt\])  
-  @@index(\[action\])  
-  @@index(\[source\])  
-}
+### API Integration
 
-enum DealSource {  
-  MANUAL  
-  GMAIL  
-}
+- **Gmail API**: Official Google APIs client
+- **Authentication**: Google OAuth 2.0
+- **HTTP Client**: Native fetch API
 
-enum SyncStatus {  
-  SYNCED  
-  PENDING  
-  FAILED  
-  CONFLICT  
-}
+### Development Tools
 
-### **Section 5: Component Architecture**
+- **Package Manager**: npm
+- **Bundler**: Turbopack (Next.js)
+- **Linting**: ESLint
+- **Type Checking**: TypeScript
 
-The NestJS microservice will be built using a modular architecture with a clear separation of concerns.
+## Design Decisions
 
-#### Core NestJS Modules
+### Why No Backend?
 
-* **AuthModule**: Manages Gmail OAuth2 flow, JWT validation, and secure token encryption.  
-* **TRPCModule**: Exposes the tRPC router as the primary API layer for the frontend.  
-* **SyncModule**: Manages all asynchronous Gmail sync jobs using BullMQ and Redis.  
-* **GmailModule**: A dedicated client for all Gmail API interactions, including quota management.  
-* **AIModule**: Manages all OpenAI API interactions, including summarization, caching, and cost tracking.  
-* **PrismaModule**: Provides a shared, injectable Prisma Client for database access.  
-* **ConfigModule**: Centralizes management of environment variables and secrets.  
-* **ErrorModule**: Provides centralized error handling, logging, and monitoring.  
-* **HealthModule**: Exposes health check endpoints for the service and its dependencies.
+1. **Simplicity**: Fewer moving parts
+2. **Cost**: No server hosting needed
+3. **Maintenance**: Less code to maintain
+4. **Real-time**: Always current Gmail data
 
-#### Component Interaction Diagram
+### Why Gmail as Data Source?
 
-sequenceDiagram  
-    participant FE as Next.js Frontend  
-    participant API as tRPC API Gateway  
-    participant Auth as AuthGuard  
-    participant Deal as DealService  
-    participant Sync as SyncService (Queue)  
-    participant DB as PrismaService (Postgres)
+1. **No Database**: Gmail stores all data
+2. **Built-in Features**: Search, labels, threading
+3. **Reliability**: Google's infrastructure
+4. **Privacy**: User owns their data
 
-    FE-\>\>+API: Call \`deal.updateStage({ dealId, newStage })\`  
-    API-\>\>+Auth: Validate JWT  
-    Auth--\>\>-API: User Context (userId)  
-    API-\>\>+Deal: updateStage(userId, dealId, newStage)  
-    Deal-\>\>+DB: findUnique(dealId, userId)  
-    DB--\>\>-Deal: Return Deal  
-    Deal-\>\>Deal: Perform Business Logic  
-    Deal-\>\>+Sync: addJob('update-gmail-label', { deal })  
-    Sync--\>\>-Deal: Job Queued  
-    Deal-\>\>+DB: update(deal)  
-    DB--\>\>-Deal: Updated Deal  
-    Deal--\>\>-API: Return Updated Deal  
-    API--\>\>-FE: Success Response
+### Why Next.js API Routes?
 
-### **Section 6: API Design and Integration**
+1. **Security**: Keep secrets server-side
+2. **Same Origin**: No CORS issues
+3. **Deployment**: Single app to deploy
+4. **Performance**: Optimized for serverless
 
-The API contract is defined using tRPC with Zod for validation, ensuring end-to-end type safety.
+## Scalability Considerations
 
-#### tRPC Router Procedures (Examples)
+### Strengths
 
-* **dealRouter**:  
-  * list(input: { stage?: string }): Fetches deals for the user.  
-  * createManual(input: { title: string, ... }): Creates a new manual deal.  
-  * updateStage(input: { dealId: string, newStage: string }): Updates a deal's stage and queues a Gmail sync job.  
-* **syncRouter**:  
-  * triggerFullSync(): Triggers a high-priority full account sync.  
-  * getStatus(): Fetches the user's current sync status.  
-* **aiRouter**:  
-  * getSummary(input: { dealId: string }): Gets a cached summary or generates a new one.  
-* **userRouter**:  
-  * getPreferences(): Fetches the user's profile and settings.  
-  * updatePreferences(input: { ... }): Updates user settings.
+- Serverless architecture scales automatically
+- No database bottlenecks
+- Stateless API routes
 
-#### Frontend Integration Patterns
+### Limitations
 
-* **tRPC Client**: A single, type-safe client will be used in the Next.js app.  
-* **Data Fetching**: We will use React Query (@tanstack/react-query) for client-side data fetching and caching.  
-* **Real-time Updates**: The initial implementation will use **short polling** on the sync.getStatus endpoint to provide UI feedback during sync operations.
+- Gmail API rate limits (250 quota units/user/second)
+- No offline functionality
+- Limited to Gmail features
+
+## Future Enhancements
+
+### Planned Features
+
+1. Email composition and sending
+2. Advanced search and filtering
+3. Email templates (localStorage)
+4. Bulk operations
+5. Analytics dashboard
+
+### Architecture Evolution
+
+1. Add Redis for caching
+2. Implement webhook support
+3. Add real-time updates via polling
+4. Support multiple email providers
+
+## Deployment
+
+The application can be deployed to any Next.js-compatible platform:
+
+- **Vercel** (recommended)
+- **Netlify**
+- **AWS Amplify**
+- **Google Cloud Run**
+- **Self-hosted Node.js**
+
+### Environment Variables
+
+Required for all deployments:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_CALLBACK_URL`
+- `NEXT_PUBLIC_APP_URL`

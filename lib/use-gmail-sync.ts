@@ -4,7 +4,7 @@ import { Deal, KanbanStage } from './types';
 import { useKanban } from './kanban-context';
 
 export function useGmailSync() {
-  const { moveDeal, updateDeal } = useKanban();
+  const { moveDeal } = useKanban();
 
   const moveGmailDeal = useCallback(async (
     deal: Deal,

@@ -1,23 +1,16 @@
-"use client";
+'use client';
 
-import {
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Alert,
-  AlertDescription,
-} from "@/components/ui/alert";
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   CheckCircle,
   AlertCircle,
@@ -25,7 +18,7 @@ import {
   Loader2,
   RefreshCw,
   Unplug,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface GmailAuthProps {
   onAuthSuccess?: (token: string) => void;
@@ -45,110 +38,94 @@ export function GmailAuth({
   onAuthError,
   onStatusChange,
 }: GmailAuthProps) {
-  const [authStatus, setAuthStatus] =
-    useState<AuthStatus>({ connected: false });
-  const [isLoading, setIsLoading] =
-    useState(false);
-  const [error, setError] = useState<
-    string | null
-  >(null);
-  const [success, setSuccess] = useState<
-    string | null
-  >(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>({
+    connected: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   // Clear messages after timeout
   useEffect(() => {
     if (success) {
-      const timer = setTimeout(
-        () => setSuccess(null),
-        5000
-      );
+      const timer = setTimeout(() => setSuccess(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [success]);
 
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(
-        () => setError(null),
-        10000
-      );
+      const timer = setTimeout(() => setError(null), 10000);
       return () => clearTimeout(timer);
     }
   }, [error]);
 
+  // Constants for retry logic
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 1000; // 1 second
+
+  const checkAuthStatus = useCallback(async () => {
+    if (isLoading) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('jwt_token');
+      if (!token) {
+        setAuthStatus({ connected: false });
+        return;
+      }
+
+      const response = await fetch('/api/auth/gmail/status', {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAuthStatus({
+          connected: data.isConnected || data.connected,
+          email: data.email,
+          tokenExpiry: data.expiresAt || data.tokenExpiry,
+          needsRefresh: data.needsRefresh,
+        });
+        setRetryCount(0); // Reset retry count on success
+      } else if (response.status === 401) {
+        // Token is invalid or expired
+        localStorage.removeItem('jwt_token');
+        setAuthStatus({ connected: false });
+        setError('Session expired. Please reconnect.');
+      } else {
+        throw new Error(`Status check failed: ${response.status}`);
+      }
+    } catch (err) {
+      console.error('Error checking auth status:', err);
+      setError('Failed to check connection status');
+
+      // Implement retry logic
+      if (retryCount < MAX_RETRIES) {
+        setRetryCount((prev) => prev + 1);
+        setTimeout(() => {
+          checkAuthStatus();
+        }, RETRY_DELAY * Math.pow(2, retryCount)); // Exponential backoff
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, retryCount]);
+
   // Check auth status on component mount
   useEffect(() => {
     checkAuthStatus();
-  }, []);
+  }, [checkAuthStatus]);
 
   // Notify parent of status changes
   useEffect(() => {
     onStatusChange?.(authStatus.connected);
   }, [authStatus.connected, onStatusChange]);
-
-  const checkAuthStatus =
-    useCallback(async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const token =
-          localStorage.getItem("jwt_token");
-        if (!token) {
-          setAuthStatus({ connected: false });
-          return;
-        }
-
-        const response = await fetch(
-          "/api/trpc/auth.getAuthStatus",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setAuthStatus({
-            connected: data.connected,
-            email: data.email,
-            tokenExpiry: data.tokenExpiry,
-            needsRefresh: data.needsRefresh,
-          });
-          setRetryCount(0); // Reset retry count on success
-        } else if (response.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem("jwt_token");
-          setAuthStatus({ connected: false });
-          setError(
-            "Session expired. Please log in again."
-          );
-        } else {
-          throw new Error(
-            `HTTP ${response.status}: ${response.statusText}`
-          );
-        }
-      } catch (err) {
-        console.error(
-          "Failed to check auth status:",
-          err
-        );
-        setError(
-          `Failed to check connection status: ${
-            err instanceof Error
-              ? err.message
-              : "Unknown error"
-          }`
-        );
-        setAuthStatus({ connected: false });
-      } finally {
-        setIsLoading(false);
-      }
-    }, []);
 
   const initiateGmailAuth = async () => {
     try {
@@ -157,34 +134,31 @@ export function GmailAuth({
       setSuccess(null);
 
       // Get OAuth URL from backend
-      const response = await fetch(
-        "/api/trpc/auth.initiateGmailAuth"
-      );
+      const response = await fetch('/api/auth/gmail/auth-url');
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          `Failed to get OAuth URL: ${response.statusText}`
+          errorData.error || `Failed to get OAuth URL: ${response.statusText}`
         );
       }
 
       const data = await response.json();
 
       if (!data.authUrl) {
-        throw new Error(
-          "No OAuth URL received from server"
-        );
+        throw new Error('No OAuth URL received from server');
       }
 
       // Open OAuth popup window
       const popup = window.open(
         data.authUrl,
-        "gmail-oauth",
-        "width=500,height=600,scrollbars=yes,resizable=yes,location=yes"
+        'gmail-oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes,location=yes'
       );
 
       if (!popup) {
         throw new Error(
-          "Failed to open OAuth popup. Please allow popups for this site."
+          'Failed to open OAuth popup. Please allow popups for this site.'
         );
       }
 
@@ -201,58 +175,36 @@ export function GmailAuth({
       }, 1000);
 
       // Handle OAuth success/error messages
-      const handleMessage = (
-        event: MessageEvent
-      ) => {
-        if (
-          event.origin !== window.location.origin
-        )
-          return;
+      const handleMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
 
         clearInterval(checkClosed);
         popup?.close();
         setIsLoading(false);
 
-        if (event.data.type === "OAUTH_SUCCESS") {
-          setSuccess(
-            "Gmail account connected successfully!"
-          );
+        if (event.data.type === 'OAUTH_SUCCESS') {
+          setSuccess('Gmail account connected successfully!');
           setAuthStatus({
             connected: true,
             email: event.data.email,
           });
           onAuthSuccess?.(event.data.token);
-          window.removeEventListener(
-            "message",
-            handleMessage
-          );
-        } else if (
-          event.data.type === "OAUTH_ERROR"
-        ) {
+          window.removeEventListener('message', handleMessage);
+        } else if (event.data.type === 'OAUTH_ERROR') {
           const errorMessage =
-            event.data.message ||
-            "OAuth authentication failed";
+            event.data.message || 'OAuth authentication failed';
           setError(errorMessage);
           onAuthError?.(errorMessage);
-          window.removeEventListener(
-            "message",
-            handleMessage
-          );
+          window.removeEventListener('message', handleMessage);
         }
       };
 
-      window.addEventListener(
-        "message",
-        handleMessage
-      );
+      window.addEventListener('message', handleMessage);
 
       // Cleanup if component unmounts
       return () => {
         clearInterval(checkClosed);
-        window.removeEventListener(
-          "message",
-          handleMessage
-        );
+        window.removeEventListener('message', handleMessage);
         if (!popup.closed) {
           popup.close();
         }
@@ -261,7 +213,7 @@ export function GmailAuth({
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Failed to initiate Gmail authentication";
+          : 'Failed to initiate Gmail authentication';
       setError(errorMessage);
       onAuthError?.(errorMessage);
       setIsLoading(false);
@@ -273,47 +225,26 @@ export function GmailAuth({
       setIsLoading(true);
       setError(null);
 
-      const token =
-        localStorage.getItem("jwt_token");
-      if (!token) {
-        throw new Error(
-          "No authentication token found"
-        );
-      }
-
-      const response = await fetch(
-        "/api/trpc/auth.refreshToken",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch('/api/auth/gmail/refresh-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSuccess(
-            "Token refreshed successfully!"
-          );
-          await checkAuthStatus();
-        } else {
-          throw new Error(
-            data.message || "Token refresh failed"
-          );
-        }
+        await response.json();
+        setSuccess('Token refreshed successfully!');
+        await checkAuthStatus();
       } else {
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          `HTTP ${response.status}: ${response.statusText}`
+          errorData.error || `HTTP ${response.status}: ${response.statusText}`
         );
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to refresh token";
+        err instanceof Error ? err.message : 'Failed to refresh token';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -325,47 +256,28 @@ export function GmailAuth({
       setIsLoading(true);
       setError(null);
 
-      const token =
-        localStorage.getItem("jwt_token");
-      if (!token) {
-        throw new Error(
-          "No authentication token found"
-        );
-      }
-
-      const response = await fetch(
-        "/api/trpc/auth.disconnectGmail",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch('/api/auth/gmail/disconnect', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setAuthStatus({ connected: false });
-          setSuccess(
-            "Gmail account disconnected successfully!"
-          );
-        } else {
-          throw new Error(
-            data.message || "Disconnect failed"
-          );
-        }
+        setAuthStatus({ connected: false });
+        setSuccess('Gmail account disconnected successfully!');
+        onStatusChange?.(false);
       } else {
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          `HTTP ${response.status}: ${response.statusText}`
+          errorData.error || `Failed to disconnect: ${response.statusText}`
         );
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Failed to disconnect Gmail account";
+          : 'Failed to disconnect Gmail account';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -377,9 +289,7 @@ export function GmailAuth({
       setRetryCount((prev) => prev + 1);
       checkAuthStatus();
     } else {
-      setError(
-        "Maximum retry attempts reached. Please refresh the page."
-      );
+      setError('Maximum retry attempts reached. Please refresh the page.');
     }
   };
 
@@ -391,23 +301,14 @@ export function GmailAuth({
           Gmail Integration
         </CardTitle>
         <CardDescription>
-          Connect your Gmail account to sync
-          emails and labels
+          Connect your Gmail account to sync emails and labels
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Connection Status */}
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">
-            Status:
-          </span>
-          <Badge
-            variant={
-              authStatus.connected
-                ? "default"
-                : "secondary"
-            }
-          >
+          <span className="text-sm font-medium">Status:</span>
+          <Badge variant={authStatus.connected ? 'default' : 'secondary'}>
             {authStatus.connected ? (
               <>
                 <CheckCircle className="h-3 w-3 mr-1" />
@@ -423,23 +324,19 @@ export function GmailAuth({
         </div>
 
         {/* User Email */}
-        {authStatus.connected &&
-          authStatus.email && (
-            <div className="text-sm text-muted-foreground">
-              Connected as:{" "}
-              <span className="font-medium">
-                {authStatus.email}
-              </span>
-            </div>
-          )}
+        {authStatus.connected && authStatus.email && (
+          <div className="text-sm text-muted-foreground">
+            Connected as:{' '}
+            <span className="font-medium">{authStatus.email}</span>
+          </div>
+        )}
 
         {/* Token Refresh Warning */}
         {authStatus.needsRefresh && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Your Gmail connection needs to be
-              refreshed.
+              Your Gmail connection needs to be refreshed.
             </AlertDescription>
           </Alert>
         )}
@@ -448,9 +345,7 @@ export function GmailAuth({
         {success && (
           <Alert>
             <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              {success}
-            </AlertDescription>
+            <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
 
@@ -563,18 +458,15 @@ export function GmailAuth({
         {/* OAuth Permissions Info */}
         {!authStatus.connected && (
           <div className="text-xs text-muted-foreground space-y-1">
-            <p className="font-medium">
-              Required permissions:
-            </p>
+            <p className="font-medium">Required permissions:</p>
             <ul className="list-disc list-inside space-y-0.5">
               <li>Read your Gmail messages</li>
               <li>Manage Gmail labels</li>
               <li>Access your email address</li>
             </ul>
             <p className="text-xs text-muted-foreground mt-2">
-              Your data is encrypted and stored
-              securely. You can disconnect at any
-              time.
+              Your data is encrypted and stored securely. You can disconnect at
+              any time.
             </p>
           </div>
         )}

@@ -57,7 +57,8 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
     try {
       const status = await apiClient.getGmailStatus();
       setGmailConnected(status.connected);
-    } catch (err) {
+    } catch {
+      setError('Failed to sync Gmail');
       setGmailConnected(false);
     }
   };

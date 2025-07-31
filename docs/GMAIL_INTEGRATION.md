@@ -1,111 +1,243 @@
-# Gmail Integration Guide for Kanban Board
+# Gmail Integration
 
 ## Overview
 
-The kanban board now integrates with Gmail to automatically sync emails as deal cards based on Gmail labels. This allows you to manage your sponsorship workflow directly from your inbox.
+The application integrates directly with Gmail API to fetch and manage emails without requiring a backend server or database. All email data is retrieved in real-time from Gmail.
+
+## Features
+
+### Email Management
+
+- View emails with pagination
+- Filter by Gmail labels
+- Search using Gmail's powerful search syntax
+- Real-time data - always current
+
+### Label Support
+
+- Fetch all user labels
+- Filter emails by label
+- Support for system and custom labels
+
+### Authentication
+
+- Secure OAuth 2.0 flow
+- Automatic token refresh
+- Easy connect/disconnect
 
 ## How It Works
 
-### 1. Gmail Label Structure
+### 1. Authentication Flow
 
-The integration creates the following label structure in your Gmail:
-
-```
-kanban/
-├── kanban/prospecting
-├── kanban/initial-contact
-├── kanban/negotiation
-├── kanban/contract-sent
-├── kanban/contract-signed
-├── kanban/content-creation
-├── kanban/content-review
-├── kanban/published
-└── kanban/completed
+```mermaid
+sequenceDiagram
+    User->>App: Click "Connect Gmail"
+    App->>Google: Redirect to OAuth
+    User->>Google: Authorize access
+    Google->>App: Return with code
+    App->>Google: Exchange code for tokens
+    App->>User: Show connected status
 ```
 
-### 2. Setting Up Gmail Sync
+### 2. Data Flow
 
-1. **Connect Gmail**: First, ensure your Gmail account is connected through the Gmail Auth component
-2. **Setup Labels**: Click "Setup Labels" in the Gmail Sync section to create the kanban label structure
-3. **Sync Emails**: Click "Sync Now" to import emails with kanban labels as deal cards
+```mermaid
+sequenceDiagram
+    Component->>API Route: Request emails
+    API Route->>Cookies: Get access token
+    API Route->>Gmail API: Fetch emails
+    Gmail API->>API Route: Return email data
+    API Route->>Component: Return formatted data
+    Component->>User: Display emails
+```
 
-### 3. Email to Deal Conversion
+## Gmail Search Queries
 
-When syncing, emails are converted to deals with:
+The application supports all Gmail search operators:
 
-- **Title**: Email subject line
-- **Brand**: Sender's name
-- **Value**: Extracted from subject (if contains $XXX or XXXk)
-- **Due Date**: Email date
-- **Contact**: Sender's email and name
-- **Stage**: Based on the Gmail label
+### Basic Searches
 
-### 4. Managing Email-Based Deals
+- `is:unread` - Unread emails
+- `is:important` - Important emails
+- `from:example@gmail.com` - From specific sender
+- `subject:invoice` - Specific subject
 
-- **Visual Indicator**: Email-based deals show a "Gmail" badge
-- **Drag & Drop**: Moving cards updates Gmail labels automatically
-- **Two-way Sync**: Changes in Gmail labels reflect on the board after sync
+### Advanced Searches
 
-### 5. Workflow Example
+- `has:attachment` - Emails with attachments
+- `larger:10M` - Large emails
+- `after:2024/1/1` - Date filtering
+- `label:work` - By label
 
-1. Label incoming sponsorship emails with `kanban/prospecting`
-2. Sync the board to see them as deal cards
-3. Drag cards through stages as deals progress
-4. Gmail labels update automatically
+### Combining Searches
 
-## API Endpoints
+- `is:unread label:important` - Unread AND important
+- `from:client@example.com OR from:partner@example.com` - Multiple senders
 
-The following endpoints are available for Gmail sync:
+## Implementation Details
 
-- `POST /api/gmail/sync/labels` - Create kanban labels in Gmail
-- `GET /api/gmail/sync/emails` - Fetch all emails with kanban labels
-- `GET /api/gmail/sync/stage/:stage` - Get emails for specific stage
-- `POST /api/gmail/sync/move` - Move email to different stage
-- `GET /api/gmail/labels` - List all Gmail labels
+### OAuth Scopes
 
-## Technical Implementation
+The application requests these Gmail scopes:
 
-### Backend Services
+- `gmail.readonly` - Read emails and labels
+- `gmail.labels` - Manage labels
+- `gmail.modify` - Modify emails (future feature)
+- `email` - Get user's email address
+- `profile` - Get user's profile info
 
-- **GmailLabelsService**: Manages Gmail label operations
-- **GmailSyncController**: Handles API endpoints for sync
+### Token Management
 
-### Frontend Components
+1. **Access Token**
 
-- **GmailSync**: UI component for sync operations
-- **useGmailSync**: Hook for Gmail-specific operations
-- **DealCard**: Updated to show Gmail indicators
+   - Short-lived (1 hour)
+   - Stored in HTTP-only cookie
+   - Used for API requests
 
-### Data Flow
+2. **Refresh Token**
+   - Long-lived
+   - Stored in HTTP-only cookie
+   - Used to get new access tokens
 
-1. User initiates sync from dashboard
-2. Backend creates/verifies Gmail labels
-3. Emails are fetched and converted to deals
-4. Deals are added to kanban context
-5. Moving deals triggers Gmail label updates
+### API Endpoints
 
-## Troubleshooting
+#### Authentication
 
-### Labels Not Created
+- `GET /api/auth/gmail/auth-url` - Start OAuth flow
+- `POST /api/auth/gmail/callback` - Complete OAuth
+- `GET /api/auth/gmail/status` - Check connection
+- `DELETE /api/auth/gmail/disconnect` - Logout
 
-- Ensure Gmail is properly connected
-- Check Gmail API permissions include label management
+#### Data Access
 
-### Emails Not Syncing
+- `GET /api/gmail/emails` - Fetch emails
+- `GET /api/gmail/labels` - Fetch labels
 
-- Verify emails have the correct kanban labels
-- Check Gmail API quota limits
+## Usage Examples
 
-### Sync Errors
+### Connect Gmail
 
-- Review browser console for detailed errors
-- Ensure backend is running and accessible
-- Check network connectivity
+```typescript
+const connectGmail = async () => {
+  // Get auth URL
+  const response = await fetch("/api/auth/gmail/auth-url");
+  const { authUrl } = await response.json();
+
+  // Open in popup
+  const popup = window.open(authUrl, "gmail-auth", "width=500,height=600");
+
+  // Listen for completion
+  window.addEventListener("message", (event) => {
+    if (event.data.type === "gmail-auth-success") {
+      popup?.close();
+      // Refresh UI
+    }
+  });
+};
+```
+
+### Fetch Emails
+
+```typescript
+const fetchEmails = async (query = "is:unread") => {
+  const response = await fetch(
+    `/api/gmail/emails?q=${encodeURIComponent(query)}`
+  );
+  const { emails } = await response.json();
+  return emails;
+};
+```
+
+### Filter by Label
+
+```typescript
+const fetchByLabel = async (labelName: string) => {
+  const emails = await fetchEmails(`label:${labelName}`);
+  return emails;
+};
+```
+
+## Best Practices
+
+### 1. Error Handling
+
+Always handle authentication errors:
+
+```typescript
+try {
+  const response = await fetch("/api/gmail/emails");
+  if (response.status === 401) {
+    // Token expired, reconnect Gmail
+  }
+  const data = await response.json();
+} catch (error) {
+  console.error("Failed to fetch emails:", error);
+}
+```
+
+### 2. Rate Limiting
+
+Be mindful of Gmail API quotas:
+
+- Cache results when possible
+- Implement pagination
+- Avoid excessive polling
+
+### 3. Search Optimization
+
+- Use specific queries to reduce results
+- Leverage Gmail's search operators
+- Implement client-side filtering for better UX
+
+## Limitations
+
+1. **API Quotas**
+
+   - 250 quota units per user per second
+   - Each operation has different costs
+
+2. **No Offline Access**
+
+   - Requires internet connection
+   - No local data caching
+
+3. **Gmail Features Only**
+   - Limited to Gmail's capabilities
+   - No custom metadata storage
 
 ## Future Enhancements
 
-- Real-time Gmail webhook integration
-- Automatic email parsing for deal details
-- Email template management
-- Bulk label operations
-- Email thread tracking
+### Planned Features
+
+1. Email composition and sending
+2. Attachment handling
+3. Thread view
+4. Bulk operations
+5. Email templates
+
+### Possible Improvements
+
+1. Implement caching layer
+2. Add webhook support
+3. Support other email providers
+4. Offline mode with sync
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Not authenticated with Gmail"**
+
+   - Click "Connect Gmail" to authenticate
+   - Check if tokens expired
+
+2. **"Failed to fetch emails"**
+
+   - Verify internet connection
+   - Check browser console for errors
+   - Ensure Gmail API is enabled
+
+3. **Rate limit errors**
+   - Reduce request frequency
+   - Implement caching
+   - Use more specific queries

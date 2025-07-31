@@ -6,11 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "start:all": "node start.js",
-    "start:unix": "./start.sh",
-    "start:windows": "start.bat",
-    "setup": "npm install && cd backend && npm install && npx prisma generate && cd .."
+    "lint": "next lint"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -36,6 +32,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "googleapis": "^154.1.0",
     "lucide-react": "^0.525.0",
     "next": "15.4.4",
     "react": "19.1.0",
