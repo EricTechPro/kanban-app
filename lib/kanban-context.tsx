@@ -2,7 +2,6 @@
 
 import React, {
   createContext,
-  useContext,
   useReducer,
   ReactNode,
 } from "react";
@@ -12,6 +11,9 @@ import {
   KanbanStage,
 } from "./types";
 import { kanbanColumns as initialColumns } from "./mock-data";
+
+// Export the context for use in hooks
+export const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
 
 // Action types
 type KanbanAction =
@@ -46,6 +48,13 @@ type KanbanAction =
       stage: KanbanStage;
       startIndex: number;
       endIndex: number;
+    }
+  | {
+      type: "CLEAR_GMAIL_DEALS";
+    }
+  | {
+      type: "SET_DEALS";
+      deals: Deal[];
     };
 
 // State interface
@@ -54,7 +63,7 @@ interface KanbanState {
 }
 
 // Context interface
-interface KanbanContextType {
+export interface KanbanContextType {
   state: KanbanState;
   dispatch: React.Dispatch<KanbanAction>;
   // Helper functions
@@ -86,6 +95,8 @@ interface KanbanContextType {
     dealId: string
   ) => Deal | undefined;
   getAllDeals: () => Deal[];
+  clearGmailDeals: () => void;
+  setDeals: (deals: Deal[]) => void;
 }
 
 // Reducer function
@@ -177,7 +188,7 @@ function kanbanReducer(
                   ...deal,
                   ...updates,
                   updatedAt: new Date(),
-                }
+                } as Deal
               : deal
           ),
         })),
@@ -281,21 +292,54 @@ function kanbanReducer(
       };
     }
 
+    case "CLEAR_GMAIL_DEALS": {
+      return {
+        ...state,
+        columns: state.columns.map((column) => ({
+          ...column,
+          deals: column.deals.filter(
+            (deal) => !deal.isFromGmail
+          ),
+        })),
+      };
+    }
+
+    case "SET_DEALS": {
+      const { deals } = action;
+
+      // Group deals by stage
+      const dealsByStage = deals.reduce((acc, deal) => {
+        if (!acc[deal.stage]) {
+          acc[deal.stage] = [];
+        }
+        acc[deal.stage].push(deal);
+        return acc;
+      }, {} as Record<KanbanStage, Deal[]>);
+
+      return {
+        ...state,
+        columns: state.columns.map((column) => ({
+          ...column,
+          deals: [
+            ...column.deals.filter(d => !d.isFromGmail), // Keep non-Gmail deals
+            ...(dealsByStage[column.id] || []) // Add new Gmail deals
+          ],
+        })),
+      };
+    }
+
     default:
       return state;
+
   }
 }
-
-// Create context
-const KanbanContext = createContext<
-  KanbanContextType | undefined
->(undefined);
 
 // Provider component
 interface KanbanProviderProps {
   children: ReactNode;
 }
 
+// Provider component
 export function KanbanProvider({
   children,
 }: KanbanProviderProps) {
@@ -324,7 +368,11 @@ export function KanbanProvider({
     deal: Deal,
     stage: KanbanStage
   ) => {
-    dispatch({ type: "ADD_DEAL", deal, stage });
+    dispatch({
+      type: "ADD_DEAL",
+      deal,
+      stage,
+    });
   };
 
   const updateDeal = (
@@ -339,7 +387,10 @@ export function KanbanProvider({
   };
 
   const deleteDeal = (dealId: string) => {
-    dispatch({ type: "DELETE_DEAL", dealId });
+    dispatch({
+      type: "DELETE_DEAL",
+      dealId,
+    });
   };
 
   const bulkMoveDeals = (
@@ -387,6 +438,14 @@ export function KanbanProvider({
     );
   };
 
+  const clearGmailDeals = () => {
+    dispatch({ type: "CLEAR_GMAIL_DEALS" });
+  };
+
+  const setDeals = (deals: Deal[]) => {
+    dispatch({ type: "SET_DEALS", deals });
+  };
+
   const contextValue: KanbanContextType = {
     state,
     dispatch,
@@ -399,6 +458,8 @@ export function KanbanProvider({
     reorderDeals,
     getDealById,
     getAllDeals,
+    clearGmailDeals,
+    setDeals,
   };
 
   return (
@@ -406,15 +467,4 @@ export function KanbanProvider({
       {children}
     </KanbanContext.Provider>
   );
-}
-
-// Hook to use the context
-export function useKanban() {
-  const context = useContext(KanbanContext);
-  if (context === undefined) {
-    throw new Error(
-      "useKanban must be used within a KanbanProvider"
-    );
-  }
-  return context;
 }

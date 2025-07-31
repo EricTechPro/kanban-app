@@ -26,8 +26,9 @@ import { MoveDealModal } from '@/components/move-deal-modal';
 import { EditDealModal } from '@/components/edit-deal-modal';
 import { GmailSync } from '@/components/gmail-sync';
 import { Deal, KanbanStage } from '@/lib/types';
-import { useKanban } from '@/lib/kanban-context';
-import { useGmailSync } from '@/lib/use-gmail-sync';
+import { useKanban } from '@/lib/hooks/kanban/use-kanban';
+import { useGmailThreadSync } from '@/lib/hooks/gmail/use-gmail-thread-sync';
+import { useKanbanStats } from '@/lib/hooks/kanban/use-kanban-stats';
 
 import { Grid, List, Calendar, Download, Move, Trash2 } from 'lucide-react';
 
@@ -44,7 +45,7 @@ export function Dashboard() {
     getAllDeals,
   } = useKanban();
 
-  const { moveGmailDeal } = useGmailSync();
+  const { moveGmailThread } = useGmailThreadSync();
 
   const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
   const [isMoveDealModalOpen, setIsMoveDealModalOpen] = useState(false);
@@ -130,11 +131,11 @@ export function Dashboard() {
 
     if (overColumn && activeDeal.stage !== overColumn.id) {
       // Move deal to different column
-      if (activeDeal.isFromGmail) {
-        // Use Gmail sync for Gmail deals
-        moveGmailDeal(activeDeal, activeDeal.stage, overColumn.id).catch(
-          (error) => {
-            console.error('Failed to move Gmail deal:', error);
+      if (activeDeal.isFromGmail && activeDeal.gmailThreadId) {
+        // Use thread-based sync for Gmail deals
+        moveGmailThread(activeDeal, activeDeal.stage, overColumn.id).catch(
+          (error: Error) => {
+            console.error('Failed to move Gmail thread:', error);
             // Error handling is done in the hook
           }
         );
@@ -291,19 +292,8 @@ export function Dashboard() {
     0
   );
 
-  // Calculate dashboard stats
-  const allDeals = getAllDeals();
-  const dashboardStats = {
-    totalDeals: allDeals.length,
-    activeDeals: allDeals.filter((deal) => !['completed'].includes(deal.stage))
-      .length,
-    completedDeals: allDeals.filter((deal) => deal.stage === 'completed')
-      .length,
-    totalRevenue: allDeals.reduce((sum, deal) => sum + deal.value, 0),
-    monthlyRevenue: allDeals
-      .filter((deal) => deal.createdAt.getMonth() === new Date().getMonth())
-      .reduce((sum, deal) => sum + deal.value, 0),
-  };
+  // Use the stats hook
+  const dashboardStats = useKanbanStats();
 
   return (
     <div className="min-h-screen bg-gray-50">

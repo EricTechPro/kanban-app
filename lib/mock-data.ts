@@ -1,4 +1,5 @@
 import { Deal, KanbanColumn, DashboardStats, User } from './types';
+import { KANBAN_STAGES, STAGE_CONFIG } from './constants';
 
 export const mockUser: User = {
   id: '1',
@@ -16,7 +17,7 @@ export const mockDeals: Deal[] = [
     currency: 'USD',
     dueDate: new Date('2024-02-15'),
     priority: 'high',
-    stage: 'prospecting',
+    stage: KANBAN_STAGES.PROSPECTING,
     progress: 25,
     tags: ['tech', 'review', 'sponsored'],
     dealType: 'sponsored-video',
@@ -31,7 +32,8 @@ export const mockDeals: Deal[] = [
     },
     notes: 'Initial contact made, waiting for product samples',
     createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-12')
+    updatedAt: new Date('2024-01-12'),
+    isFromGmail: false
   },
   {
     id: '2',
@@ -41,7 +43,7 @@ export const mockDeals: Deal[] = [
     currency: 'USD',
     dueDate: new Date('2024-02-20'),
     priority: 'medium',
-    stage: 'negotiation',
+    stage: KANBAN_STAGES.NEGOTIATION,
     progress: 60,
     tags: ['gaming', 'gear', 'partnership'],
     dealType: 'product-review',
@@ -52,117 +54,133 @@ export const mockDeals: Deal[] = [
     primaryContact: {
       name: 'Mike Chen',
       email: 'mike@gamezone.com',
-      phone: '+1-555-0456'
+      phone: '+1-555-0124'
     },
-    notes: 'Negotiating terms, almost ready to sign contract',
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-18')
+    notes: 'Contract terms being discussed',
+    createdAt: new Date('2024-01-08'),
+    updatedAt: new Date('2024-01-14'),
+    isFromGmail: false
   },
   {
     id: '3',
-    title: 'Lifestyle Brand Collab',
-    brand: 'LifeStyle Co',
-    value: 2000,
+    title: 'Fashion Brand Collaboration',
+    brand: 'StyleHub',
+    value: 4200,
     currency: 'USD',
     dueDate: new Date('2024-03-01'),
     priority: 'low',
-    stage: 'content-creation',
-    progress: 80,
-    tags: ['lifestyle', 'collaboration'],
+    stage: KANBAN_STAGES.INITIAL_CONTACT,
+    progress: 40,
+    tags: ['fashion', 'lifestyle', 'collaboration'],
     dealType: 'brand-integration',
-    startDate: new Date('2024-02-01'),
-    contentRequirements: 'Integrate brand naturally into daily vlog content',
-    deliverables: ['Video Content', 'Social Media Posts', 'Email Newsletter'],
-    estimatedHours: 12,
+    deliverables: ['Instagram Posts', 'YouTube Short'],
+    estimatedHours: 10,
     primaryContact: {
-      name: 'Emma Davis',
-      email: 'emma@lifestyleco.com'
+      name: 'Emma Wilson',
+      email: 'emma@stylehub.com'
     },
-    notes: 'Content creation in progress, first draft ready for review',
-    createdAt: new Date('2024-01-25'),
-    updatedAt: new Date('2024-02-05')
+    createdAt: new Date('2024-01-05'),
+    updatedAt: new Date('2024-01-11'),
+    isFromGmail: false
   },
   {
     id: '4',
-    title: 'Software Tutorial Series',
-    brand: 'DevTools Inc',
-    value: 8000,
+    title: 'Fitness App Promotion',
+    brand: 'FitLife',
+    value: 2800,
     currency: 'USD',
-    dueDate: new Date('2024-03-15'),
-    priority: 'urgent',
-    stage: 'contract-signed',
-    progress: 40,
-    tags: ['software', 'tutorial', 'series'],
+    dueDate: new Date('2024-02-10'),
+    priority: 'high',
+    stage: KANBAN_STAGES.CONTRACT_SENT,
+    progress: 75,
+    tags: ['fitness', 'health', 'app'],
     dealType: 'sponsored-video',
-    startDate: new Date('2024-02-10'),
-    contentRequirements: '5-part tutorial series on the new development platform',
-    deliverables: ['Video Content', 'Blog Post'],
-    estimatedHours: 40,
+    contentRequirements: 'Create workout routine using the app, showcase features',
+    deliverables: ['Video Content', 'Instagram Stories'],
+    estimatedHours: 12,
     primaryContact: {
-      name: 'Alex Rodriguez',
-      email: 'alex@devtools.com',
-      phone: '+1-555-0789'
+      name: 'David Lee',
+      email: 'david@fitlife.app',
+      role: 'Marketing Manager'
     },
-    notes: 'Contract signed, starting content planning phase',
-    createdAt: new Date('2024-02-01'),
-    updatedAt: new Date('2024-02-08')
+    notes: 'Contract sent for review, awaiting signature',
+    createdAt: new Date('2024-01-03'),
+    updatedAt: new Date('2024-01-13'),
+    isFromGmail: false
+  },
+  {
+    id: '5',
+    title: 'Travel Vlog Sponsorship',
+    brand: 'Wanderlust Co',
+    value: 6000,
+    currency: 'USD',
+    dueDate: new Date('2024-02-25'),
+    priority: 'medium',
+    stage: KANBAN_STAGES.IN_PRODUCTION,
+    progress: 85,
+    tags: ['travel', 'vlog', 'sponsored'],
+    dealType: 'sponsored-video',
+    startDate: new Date('2024-01-25'),
+    contentRequirements: 'Document travel experience using their luggage and travel gear',
+    deliverables: ['Video Series', 'Blog Posts', 'Social Media Content'],
+    estimatedHours: 30,
+    primaryContact: {
+      name: 'Lisa Park',
+      email: 'lisa@wanderlust.co',
+      company: 'Wanderlust Co'
+    },
+    secondaryContact: {
+      name: 'Tom Brown',
+      email: 'tom@wanderlust.co',
+      role: 'Content Coordinator'
+    },
+    notes: 'Currently filming content in Bali',
+    createdAt: new Date('2023-12-28'),
+    updatedAt: new Date('2024-01-14'),
+    isFromGmail: false
+  },
+  {
+    id: '6',
+    title: 'Software Tutorial Series',
+    brand: 'CodeMaster',
+    value: 4500,
+    currency: 'USD',
+    dueDate: new Date('2024-01-30'),
+    priority: 'urgent',
+    stage: KANBAN_STAGES.COMPLETED,
+    progress: 100,
+    tags: ['software', 'tutorial', 'education'],
+    dealType: 'sponsored-video',
+    deliverables: ['Video Tutorials', 'Written Guides'],
+    estimatedHours: 25,
+    primaryContact: {
+      name: 'Alex Kumar',
+      email: 'alex@codemaster.io'
+    },
+    notes: 'Successfully completed and published',
+    createdAt: new Date('2023-12-15'),
+    updatedAt: new Date('2024-01-10'),
+    isFromGmail: false
   }
 ];
 
-export const kanbanColumns: KanbanColumn[] = [
-  {
-    id: 'prospecting',
-    title: 'Prospecting',
-    deals: mockDeals.filter(deal => deal.stage === 'prospecting')
-  },
-  {
-    id: 'initial-contact',
-    title: 'Initial Contact',
-    deals: mockDeals.filter(deal => deal.stage === 'initial-contact')
-  },
-  {
-    id: 'negotiation',
-    title: 'Negotiation',
-    deals: mockDeals.filter(deal => deal.stage === 'negotiation')
-  },
-  {
-    id: 'contract-sent',
-    title: 'Contract Sent',
-    deals: mockDeals.filter(deal => deal.stage === 'contract-sent')
-  },
-  {
-    id: 'contract-signed',
-    title: 'Contract Signed',
-    deals: mockDeals.filter(deal => deal.stage === 'contract-signed')
-  },
-  {
-    id: 'content-creation',
-    title: 'Content Creation',
-    deals: mockDeals.filter(deal => deal.stage === 'content-creation')
-  },
-  {
-    id: 'content-review',
-    title: 'Content Review',
-    deals: mockDeals.filter(deal => deal.stage === 'content-review')
-  },
-  {
-    id: 'published',
-    title: 'Published',
-    deals: mockDeals.filter(deal => deal.stage === 'published')
-  },
-  {
-    id: 'completed',
-    title: 'Completed',
-    deals: mockDeals.filter(deal => deal.stage === 'completed')
-  }
-];
+export const kanbanColumns: KanbanColumn[] = Object.values(KANBAN_STAGES).map(stageId => ({
+  id: stageId,
+  title: STAGE_CONFIG[stageId].label,
+  deals: mockDeals.filter(deal => deal.stage === stageId),
+  color: STAGE_CONFIG[stageId].color
+}));
 
 export const dashboardStats: DashboardStats = {
   totalDeals: mockDeals.length,
-  activeDeals: mockDeals.filter(deal => !['completed'].includes(deal.stage)).length,
-  completedDeals: mockDeals.filter(deal => deal.stage === 'completed').length,
-  totalRevenue: mockDeals.reduce((sum, deal) => sum + deal.value, 0),
-  monthlyRevenue: mockDeals
-    .filter(deal => deal.createdAt.getMonth() === new Date().getMonth())
-    .reduce((sum, deal) => sum + deal.value, 0)
+  totalValue: mockDeals.reduce((sum, deal) => sum + deal.value, 0),
+  avgDealValue: mockDeals.length > 0 ? mockDeals.reduce((sum, deal) => sum + deal.value, 0) / mockDeals.length : 0,
+  dealsInProgress: mockDeals.filter(deal => deal.stage !== KANBAN_STAGES.COMPLETED && deal.stage !== KANBAN_STAGES.PROSPECTING).length,
+  completedDeals: mockDeals.filter(deal => deal.stage === KANBAN_STAGES.COMPLETED).length,
+  upcomingDeadlines: mockDeals.filter(deal => {
+    const daysUntilDue = (deal.dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
+    return daysUntilDue <= 7 && daysUntilDue > 0 && deal.stage !== KANBAN_STAGES.COMPLETED;
+  }).length,
+  conversionRate: mockDeals.length > 0 ? (mockDeals.filter(deal => deal.stage === KANBAN_STAGES.COMPLETED).length / mockDeals.length) * 100 : 0,
+  avgTimeToClose: 15 // Mock value in days
 };

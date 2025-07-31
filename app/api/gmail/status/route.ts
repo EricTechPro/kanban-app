@@ -3,26 +3,27 @@ import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
-    console.log('[API] Gmail status check');
+    console.log('[API] Checking Gmail authentication status');
 
     // Check if we have Gmail tokens in cookies
     const cookieStore = await cookies();
-    const gmailToken = cookieStore.get('gmail_access_token');
+    const accessToken = cookieStore.get('gmail_access_token');
+    const userEmail = cookieStore.get('gmail_user_email');
 
-    const isConnected = !!gmailToken;
+    const isAuthenticated = !!accessToken;
 
-    console.log('[API] Gmail connected:', isConnected);
+    console.log('[API] Gmail authenticated:', isAuthenticated);
 
     return NextResponse.json({
-      connected: isConnected,
-      hasToken: !!gmailToken,
+      isAuthenticated,
+      email: userEmail?.value || undefined,
     });
   } catch (error) {
     console.error('[API] Error checking Gmail status:', error);
     return NextResponse.json(
       {
         error: 'Failed to check Gmail status',
-        connected: false
+        isAuthenticated: false
       },
       { status: 500 }
     );

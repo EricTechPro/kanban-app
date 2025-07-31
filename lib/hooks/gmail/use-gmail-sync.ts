@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { apiClient } from './api/client';
-import { Deal, KanbanStage } from './types';
-import { useKanban } from './kanban-context';
+import { apiClient } from '@/lib/api/client';
+import { Deal, KanbanStage } from '@/lib/types';
+import { useKanban } from '../kanban/use-kanban';
 
 export function useGmailSync() {
   const { moveDeal } = useKanban();

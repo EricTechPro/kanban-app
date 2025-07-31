@@ -1,96 +1,78 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { google } from 'googleapis';
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_CALLBACK_URL
-);
+interface GmailLabel {
+  id: string;
+  name: string;
+  type?: string;
+  messageListVisibility?: string;
+  labelListVisibility?: string;
+}
+
+interface GmailLabelsResponse {
+  labels: GmailLabel[];
+}
 
 export async function GET() {
   try {
-    console.log('[Gmail Labels API] Request received');
+    console.log('[API] Fetching Gmail labels');
 
+    // Check if we have Gmail tokens
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get('gmail_access_token')?.value;
-    const refreshToken = cookieStore.get('gmail_refresh_token')?.value;
-    const tokenExpiry = cookieStore.get('gmail_token_expiry')?.value;
-
-    console.log('[Gmail Labels API] Token status:', {
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken,
-      hasExpiry: !!tokenExpiry
-    });
+    const accessToken = cookieStore.get('gmail_access_token');
 
     if (!accessToken) {
-      console.log('[Gmail Labels API] No access token found');
+      console.log('[API] No Gmail access token found');
       return NextResponse.json(
         { error: 'Not authenticated with Gmail' },
         { status: 401 }
       );
     }
 
-    // Check if token is expired
-    if (tokenExpiry) {
-      const expiryDate = new Date(tokenExpiry);
-      const now = new Date();
-      if (expiryDate < now) {
-        console.log('[Gmail Labels API] Token is expired');
+    // Fetch labels from Gmail API
+    const response = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/labels',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken.value}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('[API] Gmail API error:', response.status, response.statusText);
+
+      if (response.status === 401) {
+        // Clear invalid token
+        cookieStore.delete('gmail_access_token');
         return NextResponse.json(
-          { error: 'Token expired', needsRefresh: true },
+          { error: 'Gmail authentication expired' },
           { status: 401 }
         );
       }
-    }
 
-    // Set credentials
-    oauth2Client.setCredentials({
-      access_token: accessToken,
-      refresh_token: refreshToken
-    });
-
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-
-    // Fetch labels
-    const response = await gmail.users.labels.list({
-      userId: 'me'
-    });
-
-    const labels = response.data.labels || [];
-    console.log('[Gmail Labels API] Found labels:', labels.length);
-
-    // Filter and format labels
-    const formattedLabels = labels
-      .filter(label => label.name && label.id)
-      .map(label => ({
-        id: label.id,
-        name: label.name
-      }));
-
-    return NextResponse.json({ labels: formattedLabels });
-  } catch (error) {
-    console.error('[Gmail Labels API] Error:', error);
-    console.error('[Gmail Labels API] Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
-
-    // If token expired, try to refresh
-    if (
-      error instanceof Error &&
-      'response' in error &&
-      typeof error.response === 'object' &&
-      error.response !== null &&
-      'status' in error.response &&
-      error.response.status === 401
-    ) {
       return NextResponse.json(
-        { error: 'Authentication expired. Please re-authenticate.' },
-        { status: 401 }
+        { error: 'Failed to fetch labels from Gmail' },
+        { status: response.status }
       );
     }
 
+    const data: GmailLabelsResponse = await response.json();
+    const labels = data.labels || [];
+
+    // Filter and format labels
+    const formattedLabels = labels
+      .filter((label) => label.type === 'user' || label.name.includes('INBOX'))
+      .map((label) => ({
+        id: label.id,
+        name: label.name,
+      }));
+
+    console.log('[API] Fetched', formattedLabels.length, 'labels');
+
+    return NextResponse.json(formattedLabels);
+  } catch (error) {
+    console.error('[API] Error fetching labels:', error);
     return NextResponse.json(
       { error: 'Failed to fetch labels' },
       { status: 500 }

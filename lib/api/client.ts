@@ -1,6 +1,10 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { Deal, KanbanStage, GmailThread, BaseDeal, GmailDealProperties } from '../types';
+import { API_CONFIG } from '../constants';
+import { handleApiError, ApiError } from './errors';
 
-import { Deal, KanbanStage } from '../types';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const isExternalAPI = typeof window !== 'undefined' && API_URL && !API_URL.includes(window.location.origin);
+const BASE_URL = isExternalAPI ? API_URL : '';
 
 interface LoginCredentials {
   email: string;
@@ -40,17 +44,21 @@ interface KanbanLabels {
   message?: string;
 }
 
-interface GmailDeal extends Deal {
-  isFromGmail: boolean;
-  gmailMessageId: string;
-  gmailThreadId: string;
-}
+// Use the proper type composition for GmailDeal
+type GmailDeal = BaseDeal & GmailDealProperties;
 
 class ApiClient {
-  private baseURL: string;
+  private baseUrl: string;
+  private defaultHeaders: HeadersInit;
+  private abortControllers: Map<string, AbortController>;
 
   constructor() {
-    this.baseURL = API_URL;
+    // Use relative URLs when no external API is configured
+    this.baseUrl = BASE_URL;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+    };
+    this.abortControllers = new Map();
   }
 
   private getToken(): string | null {
@@ -63,164 +71,219 @@ class ApiClient {
       return tokenCookie.split('=')[1];
     }
 
-    // Fallback to localStorage for backward compatibility
+    // Try to get token from localStorage
     return localStorage.getItem('token');
-  }
-
-  private setToken(token: string): void {
-    if (typeof window === 'undefined') return;
-
-    // Set token in cookie (httpOnly would be better but requires server-side setting)
-    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
-
-    // Also set in localStorage for backward compatibility
-    localStorage.setItem('token', token);
-  }
-
-  private removeToken(): void {
-    if (typeof window === 'undefined') return;
-
-    // Remove token from cookie
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-
-    // Also remove from localStorage
-    localStorage.removeItem('token');
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    requestId?: string
   ): Promise<T> {
-    const token = this.getToken();
-    const url = `${this.baseURL}${endpoint}`;
+    // Cancel any existing request with the same ID
+    if (requestId) {
+      this.cancelRequest(requestId);
+    }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+    const controller = new AbortController();
+    if (requestId) {
+      this.abortControllers.set(requestId, controller);
+    }
+
+    const token = this.getToken();
+    const url = `${this.baseUrl}${endpoint}`;
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...this.defaultHeaders,
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
+      },
+      signal: controller.signal,
     };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          errorData.message || `HTTP ${response.status}`,
+          response.status,
+          errorData.code,
+          errorData.details
+        );
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      return handleApiError(error);
+    } finally {
+      if (requestId) {
+        this.abortControllers.delete(requestId);
+      }
     }
+  }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+  private cancelRequest(requestId: string): void {
+    const controller = this.abortControllers.get(requestId);
+    if (controller) {
+      controller.abort();
+      this.abortControllers.delete(requestId);
     }
+  }
 
-    return response.json();
+  cancelAllRequests(): void {
+    this.abortControllers.forEach(controller => controller.abort());
+    this.abortControllers.clear();
   }
 
   // Auth endpoints
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/api/auth/login', {
+    return this.request<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-
-    if (response.accessToken) {
-      this.setToken(response.accessToken);
-    }
-
-    return response;
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/api/auth/register', {
+    return this.request<AuthResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-
-    if (response.accessToken) {
-      this.setToken(response.accessToken);
-    }
-
-    return response;
   }
 
   async logout(): Promise<void> {
-    this.removeToken();
-    // Redirect to login page
-    if (typeof window !== 'undefined') {
-      window.location.href = '/';
-    }
-  }
-
-  // Gmail OAuth endpoints
-  async getGmailAuthUrl(): Promise<{ authUrl: string }> {
-    return this.request<{ authUrl: string }>('/api/auth/gmail/auth-url');
-  }
-
-  async getGmailStatus(): Promise<{ connected: boolean; email?: string }> {
-    return this.request<{ connected: boolean; email?: string }>('/api/auth/gmail/status');
-  }
-
-  async disconnectGmail(): Promise<void> {
-    await this.request('/api/auth/gmail/disconnect', {
-      method: 'DELETE',
-    });
-  }
-
-  // Gmail sync endpoints
-  async ensureKanbanLabels(): Promise<KanbanLabels> {
-    return this.request<KanbanLabels>('/api/gmail/sync/labels', {
+    return this.request<void>('/api/auth/logout', {
       method: 'POST',
     });
   }
 
-  async syncGmailEmails(): Promise<GmailDeal[]> {
-    return this.request<GmailDeal[]>('/api/gmail/sync/emails');
-  }
-
-  async getGmailEmailsByStage(stage: KanbanStage): Promise<GmailDeal[]> {
-    return this.request<GmailDeal[]>(`/api/gmail/sync/stage/${stage}`);
-  }
-
-  async moveGmailEmail(messageId: string, fromStage: KanbanStage, toStage: KanbanStage): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>('/api/gmail/sync/move', {
+  async refreshToken(): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/api/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ messageId, fromStage, toStage }),
     });
   }
 
-  async getAllGmailLabels(): Promise<GmailLabel[]> {
-    return this.request<GmailLabel[]>('/api/gmail/labels');
-  }
-
-  // Deals endpoints
+  // Deal endpoints
   async getDeals(): Promise<Deal[]> {
     return this.request<Deal[]>('/api/deals');
   }
 
-  async createDeal(deal: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>): Promise<Deal> {
+  async getDeal(id: string): Promise<Deal> {
+    return this.request<Deal>(`/api/deals/${id}`);
+  }
+
+  async createDeal(deal: Partial<Deal>): Promise<Deal> {
     return this.request<Deal>('/api/deals', {
       method: 'POST',
       body: JSON.stringify(deal),
     });
   }
 
-  async updateDeal(id: string, deal: Partial<Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Deal> {
+  async updateDeal(id: string, updates: Partial<Deal>): Promise<Deal> {
     return this.request<Deal>(`/api/deals/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(deal),
+      method: 'PATCH',
+      body: JSON.stringify(updates),
     });
   }
 
   async deleteDeal(id: string): Promise<void> {
-    await this.request(`/api/deals/${id}`, {
+    return this.request<void>(`/api/deals/${id}`, {
       method: 'DELETE',
     });
   }
 
-  async moveDeal(dealId: string, newStage: KanbanStage, newPosition: number): Promise<Deal> {
-    return this.request<Deal>('/api/deals/move', {
+  async moveDeal(id: string, stage: KanbanStage): Promise<Deal> {
+    return this.request<Deal>(`/api/deals/${id}/move`, {
       method: 'POST',
-      body: JSON.stringify({ dealId, newStage, newPosition }),
+      body: JSON.stringify({ stage }),
     });
+  }
+
+  // Gmail endpoints
+  async ensureKanbanLabels(): Promise<KanbanLabels> {
+    return this.request<KanbanLabels>('/api/gmail/labels/ensure', {
+      method: 'POST',
+    });
+  }
+
+  async syncGmailEmails(): Promise<GmailDeal[]> {
+    return this.request<GmailDeal[]>('/api/gmail/sync', {
+      method: 'POST',
+    });
+  }
+
+  async moveGmailEmail(
+    messageId: string,
+    fromStage: KanbanStage,
+    toStage: KanbanStage
+  ): Promise<void> {
+    return this.request<void>(`/api/gmail/messages/${messageId}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ fromStage, toStage }),
+    });
+  }
+
+  async getGmailThreads(): Promise<GmailThread[]> {
+    return this.request<GmailThread[]>('/api/gmail/threads');
+  }
+
+  async moveGmailThread(
+    threadId: string,
+    fromStage: KanbanStage,
+    toStage: KanbanStage
+  ): Promise<void> {
+    return this.request<void>(`/api/gmail/threads/${threadId}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ fromStage, toStage }),
+    });
+  }
+
+  async getGmailThreadsByLabels(): Promise<GmailThread[]> {
+    return this.request<GmailThread[]>('/api/gmail/threads/by-labels');
+  }
+
+  async getGmailStatus(): Promise<{ isAuthenticated: boolean; email?: string }> {
+    return this.request('/api/gmail/status');
+  }
+
+  async getGmailAuthUrl(): Promise<{ url: string }> {
+    return this.request('/api/gmail/auth/url');
+  }
+
+  // Dashboard endpoints
+  async getDashboardStats(): Promise<{
+    totalDeals: number;
+    activeDeals: number;
+    completedDeals: number;
+    totalRevenue: number;
+    monthlyRevenue: number;
+  }> {
+    return this.request('/api/dashboard/stats');
+  }
+
+  async getUpcomingDeadlines(): Promise<Deal[]> {
+    return this.request<Deal[]>('/api/dashboard/deadlines');
+  }
+
+  // Export endpoints
+  async exportDeals(format: 'csv' | 'json' = 'csv'): Promise<Blob> {
+    const response = await fetch(`${this.baseUrl}/api/export/deals?format=${format}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${this.getToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to export deals');
+    }
+
+    return response.blob();
   }
 }
 

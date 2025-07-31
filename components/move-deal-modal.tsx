@@ -24,6 +24,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { Deal, KanbanStage } from "@/lib/types";
+import { KANBAN_STAGES } from "@/lib/constants";
 import { Move, ArrowRight } from "lucide-react";
 
 interface MoveDealModalProps {
@@ -39,47 +40,32 @@ const stageOptions: {
   color: string;
 }[] = [
   {
-    value: "prospecting",
+    value: KANBAN_STAGES.PROSPECTING,
     label: "Prospecting",
     color: "bg-blue-100 text-blue-800",
   },
   {
-    value: "initial-contact",
+    value: KANBAN_STAGES.INITIAL_CONTACT,
     label: "Initial Contact",
     color: "bg-yellow-100 text-yellow-800",
   },
   {
-    value: "negotiation",
+    value: KANBAN_STAGES.NEGOTIATION,
     label: "Negotiation",
     color: "bg-orange-100 text-orange-800",
   },
   {
-    value: "contract-sent",
+    value: KANBAN_STAGES.CONTRACT_SENT,
     label: "Contract Sent",
     color: "bg-purple-100 text-purple-800",
   },
   {
-    value: "contract-signed",
-    label: "Contract Signed",
-    color: "bg-indigo-100 text-indigo-800",
-  },
-  {
-    value: "content-creation",
-    label: "Content Creation",
+    value: KANBAN_STAGES.IN_PRODUCTION,
+    label: "In Production",
     color: "bg-green-100 text-green-800",
   },
   {
-    value: "content-review",
-    label: "Content Review",
-    color: "bg-teal-100 text-teal-800",
-  },
-  {
-    value: "published",
-    label: "Published",
-    color: "bg-emerald-100 text-emerald-800",
-  },
-  {
-    value: "completed",
+    value: KANBAN_STAGES.COMPLETED,
     label: "Completed",
     color: "bg-gray-100 text-gray-800",
   },

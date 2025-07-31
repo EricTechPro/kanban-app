@@ -60,10 +60,7 @@ const editDealSchema = z.object({
     "initial-contact",
     "negotiation",
     "contract-sent",
-    "contract-signed",
-    "content-creation",
-    "content-review",
-    "published",
+    "in-production",
     "completed",
   ]),
   progress: z.number().min(0).max(100),
@@ -124,19 +121,9 @@ const stageOptions: {
     color: "bg-indigo-100 text-indigo-800",
   },
   {
-    value: "content-creation",
-    label: "Content Creation",
+    value: "in-production",
+    label: "In Production",
     color: "bg-green-100 text-green-800",
-  },
-  {
-    value: "content-review",
-    label: "Content Review",
-    color: "bg-teal-100 text-teal-800",
-  },
-  {
-    value: "published",
-    label: "Published",
-    color: "bg-emerald-100 text-emerald-800",
   },
   {
     value: "completed",

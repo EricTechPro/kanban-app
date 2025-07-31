@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Script from 'next/script';
+import { KanbanProvider } from '@/lib/kanban-context';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,30 +30,13 @@ export default function RootLayout({
         <Script id="global-error-handler" strategy="beforeInteractive">
           {`
             window.addEventListener('error', function(event) {
-              console.error('[Global Error Handler] Caught error:', {
-                message: event.message,
-                filename: event.filename,
-                lineno: event.lineno,
-                colno: event.colno,
-                error: event.error,
-                stack: event.error?.stack,
-                timestamp: new Date().toISOString()
-              });
-            });
-
-            window.addEventListener('unhandledrejection', function(event) {
-              console.error('[Global Error Handler] Unhandled promise rejection:', {
-                reason: event.reason,
-                promise: event.promise,
-                timestamp: new Date().toISOString()
-              });
-            });
-
-            // Log when the app starts
-            console.log('[App] YouTube Sponsorship Workflow starting...', {
-              timestamp: new Date().toISOString(),
-              userAgent: navigator.userAgent,
-              url: window.location.href
+              if (event.error && event.error.message) {
+                if (event.error.message.includes('NetworkError') || 
+                    event.error.message.includes('fetch')) {
+                  console.warn('Network error detected:', event.error.message);
+                  event.preventDefault();
+                }
+              }
             });
           `}
         </Script>
@@ -60,7 +44,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <KanbanProvider>{children}</KanbanProvider>
       </body>
     </html>
   );

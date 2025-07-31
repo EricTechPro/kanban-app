@@ -27,10 +27,14 @@ import {
   AlertCircle,
   Tag,
   Inbox,
-  Link,
+  Link2
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
-import { useKanban } from '@/lib/kanban-context';
+import { useKanban } from '@/lib/hooks/kanban/use-kanban';
+import { GmailThreadConverter } from '@/lib/utils/gmail-thread-converter';
+import { useGmailThreadSync } from '@/lib/hooks/gmail/use-gmail-thread-sync';
+
+// Types
 import { Deal, KanbanStage } from '@/lib/types';
 
 interface GmailSyncProps {
@@ -47,7 +51,9 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
   const [syncProgress, setSyncProgress] = useState(0);
   const [gmailConnected, setGmailConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const { addDeal } = useKanban();
+  const { syncGmailThreads } = useGmailThreadSync();
 
   useEffect(() => {
     checkGmailConnection();
@@ -56,10 +62,10 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
   const checkGmailConnection = async () => {
     try {
       const status = await apiClient.getGmailStatus();
-      setGmailConnected(status.connected);
-    } catch {
-      setError('Failed to sync Gmail');
-      setGmailConnected(false);
+      setGmailConnected(status.isAuthenticated);
+      setUserEmail(status.email || null);
+    } catch (error) {
+      console.error('Failed to check Gmail status:', error);
     }
   };
 
@@ -68,11 +74,11 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
     setError(null);
 
     try {
-      const { authUrl } = await apiClient.getGmailAuthUrl();
+      const response = await apiClient.getGmailAuthUrl();
 
       // Open OAuth popup
       const popup = window.open(
-        authUrl,
+        response.url,
         'gmail-oauth',
         'width=500,height=600,scrollbars=yes,resizable=yes'
       );
@@ -167,37 +173,20 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
         throw new Error('Failed to setup Gmail labels');
       }
 
-      // Sync emails
-      setSyncStatus('Fetching emails from Gmail...');
+      // Sync emails using thread-based approach
+      setSyncStatus('Fetching email threads from Gmail...');
       setSyncProgress(30);
-      const gmailDeals = await apiClient.syncGmailEmails();
 
-      setSyncStatus(`Found ${gmailDeals.length} emails to sync`);
-      setSyncProgress(50);
+      const result = await syncGmailThreads();
 
-      // Add deals to kanban board
-      let addedCount = 0;
-      for (let i = 0; i < gmailDeals.length; i++) {
-        const deal = gmailDeals[i];
-        setSyncStatus(
-          `Adding deal ${i + 1} of ${gmailDeals.length}: ${deal.title}`
-        );
-        setSyncProgress(50 + (40 * (i + 1)) / gmailDeals.length);
-
-        try {
-          addDeal(deal as Deal, deal.stage as KanbanStage);
-          addedCount++;
-        } catch (err) {
-          console.error(`Failed to add deal: ${deal.title}`, err);
-        }
-      }
-
-      setSyncProgress(100);
-      setSuccess(`Successfully synced ${addedCount} deals from Gmail!`);
+      setSyncProgress(90);
+      setSuccess(`Successfully synced ${result.totalAdded} email threads from Gmail!`);
       setSyncStatus('Sync complete!');
+      setSyncProgress(100);
 
+      // Call the callback if provided
       if (onSyncComplete) {
-        onSyncComplete(gmailDeals as Deal[]);
+        onSyncComplete([]);
       }
 
       // Close dialog after success
@@ -236,7 +225,7 @@ export function GmailSync({ onSyncComplete }: GmailSyncProps) {
             {isConnecting ? (
               <Loader2 className="animate-spin h-5 w-5" />
             ) : (
-              <Link className="h-5 w-5" />
+              <Link2 className="h-5 w-5" />
             )}
             <span>{isConnecting ? 'Connecting...' : 'Connect Gmail'}</span>
           </Button>

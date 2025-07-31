@@ -186,7 +186,11 @@ export function DealCard({ deal, onEdit, onMove, onDelete }: DealCardProps) {
           {deal.isFromGmail && (
             <Badge variant="secondary" className="h-5 px-1.5 gap-1">
               <Mail className="h-3 w-3" />
-              <span className="text-xs">Gmail</span>
+              <span className="text-xs">
+                {deal.emailCount && deal.emailCount > 1
+                  ? `${deal.emailCount} emails`
+                  : 'Gmail'}
+              </span>
             </Badge>
           )}
         </div>
