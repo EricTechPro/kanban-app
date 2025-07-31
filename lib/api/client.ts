@@ -2,16 +2,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 import { Deal, KanbanStage } from '../types';
 
-export interface LoginCredentials {
+interface LoginCredentials {
   email: string;
   password: string;
 }
 
-export interface RegisterCredentials extends LoginCredentials {
+interface RegisterCredentials extends LoginCredentials {
   name?: string;
 }
 
-export interface AuthResponse {
+interface AuthResponse {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
@@ -20,6 +20,23 @@ export interface AuthResponse {
     email: string;
     name?: string;
   };
+}
+
+interface GmailLabel {
+  id: string;
+  name: string;
+  type?: string;
+}
+
+interface KanbanLabels {
+  parentLabel: GmailLabel;
+  stageLabels: Record<string, GmailLabel>;
+}
+
+interface GmailDeal extends Deal {
+  isFromGmail: boolean;
+  gmailMessageId: string;
+  gmailThreadId: string;
 }
 
 class ApiClient {
@@ -126,7 +143,7 @@ class ApiClient {
     }
   }
 
-  // Gmail integration
+  // Gmail OAuth endpoints
   async getGmailAuthUrl(): Promise<{ authUrl: string }> {
     return this.request<{ authUrl: string }>('/api/auth/gmail/auth-url');
   }
@@ -139,6 +156,32 @@ class ApiClient {
     await this.request('/api/auth/gmail/disconnect', {
       method: 'DELETE',
     });
+  }
+
+  // Gmail sync endpoints
+  async ensureKanbanLabels(): Promise<KanbanLabels> {
+    return this.request<KanbanLabels>('/api/gmail/sync/labels', {
+      method: 'POST',
+    });
+  }
+
+  async syncGmailEmails(): Promise<GmailDeal[]> {
+    return this.request<GmailDeal[]>('/api/gmail/sync/emails');
+  }
+
+  async getGmailEmailsByStage(stage: KanbanStage): Promise<GmailDeal[]> {
+    return this.request<GmailDeal[]>(`/api/gmail/sync/stage/${stage}`);
+  }
+
+  async moveGmailEmail(messageId: string, fromStage: KanbanStage, toStage: KanbanStage): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>('/api/gmail/sync/move', {
+      method: 'POST',
+      body: JSON.stringify({ messageId, fromStage, toStage }),
+    });
+  }
+
+  async getAllGmailLabels(): Promise<GmailLabel[]> {
+    return this.request<GmailLabel[]>('/api/gmail/labels');
   }
 
   // Deals endpoints

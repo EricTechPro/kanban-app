@@ -33,9 +33,13 @@ export class AuthController {
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     try {
       const user = req.user as any;
-      const result = await this.authService.handleOAuthCallback(
-        req.query.code as string,
+
+      // Passport has already exchanged the code for tokens
+      // The tokens are available in the user object
+      const result = await this.authService.handleOAuthCallbackWithTokens(
         user.email,
+        user.accessToken,
+        user.refreshToken,
       );
 
       // Redirect to frontend with success

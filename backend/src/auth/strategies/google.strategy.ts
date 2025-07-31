@@ -16,6 +16,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.labels',
       ],
+      accessType: 'offline',
+      prompt: 'consent', // Force consent to get refresh token
     });
   }
 

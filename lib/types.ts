@@ -21,6 +21,9 @@ export interface Deal {
   attachments?: FileAttachment[];
   createdAt: Date;
   updatedAt: Date;
+  isFromGmail?: boolean;
+  gmailMessageId?: string;
+  gmailThreadId?: string;
 }
 
 export interface Contact {

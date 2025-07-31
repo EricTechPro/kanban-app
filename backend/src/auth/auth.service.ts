@@ -166,6 +166,97 @@ export class AuthService {
   }
 
   /**
+   * Handle OAuth callback with tokens from Passport
+   */
+  async handleOAuthCallbackWithTokens(
+    userEmail: string,
+    accessToken: string,
+    refreshToken?: string,
+  ): Promise<any> {
+    try {
+      if (!accessToken) {
+        throw new UnauthorizedException('No access token provided');
+      }
+
+      // Find or create user
+      let user = await this.prisma.user.findUnique({
+        where: { email: userEmail },
+      });
+
+      if (!user) {
+        // Generate encryption key for new user
+        const tokenEncryptionKey = this.tokenEncryption.generateEncryptionKey();
+
+        user = await this.prisma.user.create({
+          data: {
+            email: userEmail,
+            tokenEncryptionKey,
+          },
+        });
+
+        this.logger.log(`Created new user: ${userEmail}`);
+      }
+
+      // Ensure user has encryption key
+      if (!user.tokenEncryptionKey) {
+        const tokenEncryptionKey = this.tokenEncryption.generateEncryptionKey();
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { tokenEncryptionKey },
+        });
+      }
+
+      // Encrypt tokens
+      const encryptedAccessToken = this.tokenEncryption.encryptToken(
+        accessToken,
+        user.tokenEncryptionKey,
+      );
+
+      let encryptedRefreshToken = null;
+      if (refreshToken) {
+        encryptedRefreshToken = this.tokenEncryption.encryptToken(
+          refreshToken,
+          user.tokenEncryptionKey,
+        );
+      }
+
+      // Default token expiry to 1 hour
+      const tokenExpiry = this.tokenEncryption.calculateTokenExpiry(3600);
+
+      // Update user with encrypted tokens
+      const updatedUser = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          encryptedAccessToken,
+          encryptedRefreshToken,
+          tokenExpiry,
+          gmailConnected: true,
+        },
+      });
+
+      // Generate JWT for frontend
+      const jwt = this.jwtService.sign({
+        userId: updatedUser.id,
+        email: updatedUser.email,
+      });
+
+      this.logger.log(`OAuth callback successful for user: ${userEmail}`);
+
+      return {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          gmailConnected: true,
+        },
+        jwt,
+      };
+    } catch (error) {
+      this.logger.error(`OAuth callback failed: ${error.message}`, error.stack);
+      throw new UnauthorizedException(`OAuth authentication failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Get current Gmail connection status for a user
    */
   async getAuthStatus(userId: string): Promise<any> {

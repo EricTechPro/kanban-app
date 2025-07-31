@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -11,36 +11,25 @@ import {
   useSensors,
   DragOverlay,
   closestCorners,
-} from "@dnd-kit/core";
-import { Button } from "@/components/ui/button";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import { TopNavigation } from "@/components/top-navigation";
-import { DashboardStatsBar } from "@/components/dashboard-stats";
-import { KanbanColumnComponent } from "@/components/kanban-column";
-import { DealCard } from "@/components/deal-card";
-import { AddDealModal } from "@/components/add-deal-modal";
-import { MoveDealModal } from "@/components/move-deal-modal";
-import { EditDealModal } from "@/components/edit-deal-modal";
-import { Deal, KanbanStage } from "@/lib/types";
-import { useKanban } from "@/lib/kanban-context";
-import { mockUser } from "@/lib/mock-data";
-import {
-  Grid,
-  List,
-  Calendar,
-  Download,
-  Move,
-  Trash2,
-} from "lucide-react";
+} from '@dnd-kit/core';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { TopNavigation } from '@/components/top-navigation';
+import { DashboardStatsBar } from '@/components/dashboard-stats';
+import { KanbanColumnComponent } from '@/components/kanban-column';
+import { DealCard } from '@/components/deal-card';
+import { AddDealModal } from '@/components/add-deal-modal';
+import { MoveDealModal } from '@/components/move-deal-modal';
+import { EditDealModal } from '@/components/edit-deal-modal';
+import { GmailSync } from '@/components/gmail-sync';
+import { Deal, KanbanStage } from '@/lib/types';
+import { useKanban } from '@/lib/kanban-context';
+import { useGmailSync } from '@/lib/use-gmail-sync';
+import { mockUser } from '@/lib/mock-data';
+import { Grid, List, Calendar, Download, Move, Trash2 } from 'lucide-react';
 
 export function Dashboard() {
   const {
@@ -55,47 +44,30 @@ export function Dashboard() {
     getAllDeals,
   } = useKanban();
 
-  const [
-    isAddDealModalOpen,
-    setIsAddDealModalOpen,
-  ] = useState(false);
-  const [
-    isMoveDealModalOpen,
-    setIsMoveDealModalOpen,
-  ] = useState(false);
-  const [
-    isEditDealModalOpen,
-    setIsEditDealModalOpen,
-  ] = useState(false);
-  const [
-    selectedDealStage,
-    setSelectedDealStage,
-  ] = useState<KanbanStage>("prospecting");
-  const [dealToMove, setDealToMove] =
-    useState<Deal | null>(null);
-  const [dealToEdit, setDealToEdit] =
-    useState<Deal | null>(null);
-  const [viewMode, setViewMode] = useState<
-    "board" | "list" | "calendar"
-  >("board");
-  const [selectedDeals, setSelectedDeals] =
-    useState<string[]>([]);
-  const [selectAll, setSelectAll] =
-    useState(false);
-  const [activeDeal, setActiveDeal] =
-    useState<Deal | null>(null);
+  const { moveGmailDeal } = useGmailSync();
+
+  const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
+  const [isMoveDealModalOpen, setIsMoveDealModalOpen] = useState(false);
+  const [isEditDealModalOpen, setIsEditDealModalOpen] = useState(false);
+  const [selectedDealStage, setSelectedDealStage] =
+    useState<KanbanStage>('prospecting');
+  const [dealToMove, setDealToMove] = useState<Deal | null>(null);
+  const [dealToEdit, setDealToEdit] = useState<Deal | null>(null);
+  const [viewMode, setViewMode] = useState<'board' | 'list' | 'calendar'>(
+    'board'
+  );
+  const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
 
   // Filter states
-  const [searchQuery, setSearchQuery] =
-    useState("");
-  const [statusFilter, setStatusFilter] =
-    useState("");
-  const [brandFilter, setBrandFilter] =
-    useState("");
-  const [dateRangeFilter, setDateRangeFilter] =
-    useState<{ from: Date; to: Date } | null>(
-      null
-    );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
+  const [dateRangeFilter, setDateRangeFilter] = useState<{
+    from: Date;
+    to: Date;
+  } | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -106,9 +78,7 @@ export function Dashboard() {
     })
   );
 
-  const handleDragStart = (
-    event: DragStartEvent
-  ) => {
+  const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const deal = state.columns
       .flatMap((col) => col.deals)
@@ -119,9 +89,7 @@ export function Dashboard() {
     }
   };
 
-  const handleDragOver = (
-    event: DragOverEvent
-  ) => {
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
 
     if (!over) return;
@@ -139,20 +107,11 @@ export function Dashboard() {
     if (!activeDeal) return;
 
     // Check if we're dropping over a column
-    const overColumn = state.columns.find(
-      (col) => col.id === overId
-    );
+    const overColumn = state.columns.find((col) => col.id === overId);
 
-    if (
-      overColumn &&
-      activeDeal.stage !== overColumn.id
-    ) {
+    if (overColumn && activeDeal.stage !== overColumn.id) {
       // Move deal to different column
-      moveDeal(
-        activeId as string,
-        activeDeal.stage,
-        overColumn.id
-      );
+      moveDeal(activeId as string, activeDeal.stage, overColumn.id);
     }
   };
 
@@ -176,20 +135,22 @@ export function Dashboard() {
     if (!activeDeal) return;
 
     // Check if we're dropping over a column
-    const overColumn = state.columns.find(
-      (col) => col.id === overId
-    );
+    const overColumn = state.columns.find((col) => col.id === overId);
 
-    if (
-      overColumn &&
-      activeDeal.stage !== overColumn.id
-    ) {
+    if (overColumn && activeDeal.stage !== overColumn.id) {
       // Move deal to different column
-      moveDeal(
-        activeId as string,
-        activeDeal.stage,
-        overColumn.id
-      );
+      if (activeDeal.isFromGmail) {
+        // Use Gmail sync for Gmail deals
+        moveGmailDeal(activeDeal, activeDeal.stage, overColumn.id).catch(
+          (error) => {
+            console.error('Failed to move Gmail deal:', error);
+            // Error handling is done in the hook
+          }
+        );
+      } else {
+        // Regular deal move
+        moveDeal(activeId as string, activeDeal.stage, overColumn.id);
+      }
       return;
     }
 
@@ -198,27 +159,14 @@ export function Dashboard() {
       .flatMap((col) => col.deals)
       .find((d) => d.id === overId);
 
-    if (
-      overDeal &&
-      activeDeal.stage === overDeal.stage
-    ) {
-      const column = state.columns.find(
-        (col) => col.id === activeDeal.stage
-      );
+    if (overDeal && activeDeal.stage === overDeal.stage) {
+      const column = state.columns.find((col) => col.id === activeDeal.stage);
       if (column) {
-        const oldIndex = column.deals.findIndex(
-          (d) => d.id === activeId
-        );
-        const newIndex = column.deals.findIndex(
-          (d) => d.id === overId
-        );
+        const oldIndex = column.deals.findIndex((d) => d.id === activeId);
+        const newIndex = column.deals.findIndex((d) => d.id === overId);
 
         if (oldIndex !== newIndex) {
-          reorderDeals(
-            activeDeal.stage,
-            oldIndex,
-            newIndex
-          );
+          reorderDeals(activeDeal.stage, oldIndex, newIndex);
         }
       }
     }
@@ -231,30 +179,26 @@ export function Dashboard() {
     setIsAddDealModalOpen(true);
   };
 
-  const handleCreateDeal = (
-    dealData: Partial<Deal>
-  ) => {
+  const handleCreateDeal = (dealData: Partial<Deal>) => {
     const newDeal: Deal = {
       id: Date.now().toString(),
-      title: dealData.title || "",
-      brand: dealData.brand || "",
+      title: dealData.title || '',
+      brand: dealData.brand || '',
       value: dealData.value || 0,
-      currency: dealData.currency || "USD",
+      currency: dealData.currency || 'USD',
       dueDate: dealData.dueDate || new Date(),
-      priority: dealData.priority || "medium",
+      priority: dealData.priority || 'medium',
       stage: dealData.stage || selectedDealStage,
       progress: dealData.progress || 0,
       tags: dealData.tags || [],
-      dealType:
-        dealData.dealType || "sponsored-video",
+      dealType: dealData.dealType || 'sponsored-video',
       startDate: dealData.startDate,
-      contentRequirements:
-        dealData.contentRequirements,
+      contentRequirements: dealData.contentRequirements,
       deliverables: dealData.deliverables || [],
       estimatedHours: dealData.estimatedHours,
       primaryContact: dealData.primaryContact || {
-        name: "",
-        email: "",
+        name: '',
+        email: '',
       },
       secondaryContact: dealData.secondaryContact,
       notes: dealData.notes,
@@ -271,10 +215,7 @@ export function Dashboard() {
     setIsEditDealModalOpen(true);
   };
 
-  const handleUpdateDeal = (
-    dealId: string,
-    updates: Partial<Deal>
-  ) => {
+  const handleUpdateDeal = (dealId: string, updates: Partial<Deal>) => {
     updateDeal(dealId, updates);
     setDealToEdit(null);
   };
@@ -284,25 +225,15 @@ export function Dashboard() {
     setIsMoveDealModalOpen(true);
   };
 
-  const handleMoveDealToStage = (
-    toStage: KanbanStage
-  ) => {
+  const handleMoveDealToStage = (toStage: KanbanStage) => {
     if (dealToMove) {
-      moveDeal(
-        dealToMove.id,
-        dealToMove.stage,
-        toStage
-      );
+      moveDeal(dealToMove.id, dealToMove.stage, toStage);
       setDealToMove(null);
     }
   };
 
   const handleDeleteDeal = (deal: Deal) => {
-    if (
-      confirm(
-        `Are you sure you want to delete "${deal.title}"?`
-      )
-    ) {
+    if (confirm(`Are you sure you want to delete "${deal.title}"?`)) {
       deleteDeal(deal.id);
     }
   };
@@ -319,17 +250,14 @@ export function Dashboard() {
     setBrandFilter(brand);
   };
 
-  const handleFilterDateRange = (dateRange: {
-    from: Date;
-    to: Date;
-  }) => {
+  const handleFilterDateRange = (dateRange: { from: Date; to: Date }) => {
     setDateRangeFilter(dateRange);
   };
 
   const handleClearFilters = () => {
-    setSearchQuery("");
-    setStatusFilter("");
-    setBrandFilter("");
+    setSearchQuery('');
+    setStatusFilter('');
+    setBrandFilter('');
     setDateRangeFilter(null);
   };
 
@@ -337,9 +265,7 @@ export function Dashboard() {
     if (selectAll) {
       setSelectedDeals([]);
     } else {
-      const allDealIds = getAllDeals().map(
-        (deal) => deal.id
-      );
+      const allDealIds = getAllDeals().map((deal) => deal.id);
       setSelectedDeals(allDealIds);
     }
     setSelectAll(!selectAll);
@@ -350,20 +276,20 @@ export function Dashboard() {
 
     // TODO: Show modal to select target stage
     const targetStage = prompt(
-      "Enter target stage (prospecting, negotiation, etc.):"
+      'Enter target stage (prospecting, negotiation, etc.):'
     ) as KanbanStage;
     if (
       targetStage &&
       [
-        "prospecting",
-        "initial-contact",
-        "negotiation",
-        "contract-sent",
-        "contract-signed",
-        "content-creation",
-        "content-review",
-        "published",
-        "completed",
+        'prospecting',
+        'initial-contact',
+        'negotiation',
+        'contract-sent',
+        'contract-signed',
+        'content-creation',
+        'content-review',
+        'published',
+        'completed',
       ].includes(targetStage)
     ) {
       bulkMoveDeals(selectedDeals, targetStage);
@@ -376,9 +302,7 @@ export function Dashboard() {
     if (selectedDeals.length === 0) return;
 
     if (
-      confirm(
-        `Are you sure you want to delete ${selectedDeals.length} deals?`
-      )
+      confirm(`Are you sure you want to delete ${selectedDeals.length} deals?`)
     ) {
       bulkDeleteDeals(selectedDeals);
       setSelectedDeals([]);
@@ -387,47 +311,30 @@ export function Dashboard() {
   };
 
   const handleExportSelected = () => {
-    console.log("Export deals:", selectedDeals);
+    console.log('Export deals:', selectedDeals);
     // TODO: Implement export functionality
   };
 
   // Apply filters to columns
-  const filteredColumns = state.columns.map(
-    (column) => ({
-      ...column,
-      deals: column.deals.filter((deal) => {
-        const matchesSearch =
-          !searchQuery ||
-          deal.title
-            .toLowerCase()
-            .includes(
-              searchQuery.toLowerCase()
-            ) ||
-          deal.brand
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase());
+  const filteredColumns = state.columns.map((column) => ({
+    ...column,
+    deals: column.deals.filter((deal) => {
+      const matchesSearch =
+        !searchQuery ||
+        deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deal.brand.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const matchesStatus =
-          !statusFilter ||
-          deal.stage === statusFilter;
-        const matchesBrand =
-          !brandFilter ||
-          deal.brand === brandFilter;
+      const matchesStatus = !statusFilter || deal.stage === statusFilter;
+      const matchesBrand = !brandFilter || deal.brand === brandFilter;
 
-        const matchesDateRange =
-          !dateRangeFilter ||
-          (deal.dueDate >= dateRangeFilter.from &&
-            deal.dueDate <= dateRangeFilter.to);
+      const matchesDateRange =
+        !dateRangeFilter ||
+        (deal.dueDate >= dateRangeFilter.from &&
+          deal.dueDate <= dateRangeFilter.to);
 
-        return (
-          matchesSearch &&
-          matchesStatus &&
-          matchesBrand &&
-          matchesDateRange
-        );
-      }),
-    })
-  );
+      return matchesSearch && matchesStatus && matchesBrand && matchesDateRange;
+    }),
+  }));
 
   const totalDeals = filteredColumns.reduce(
     (sum, column) => sum + column.deals.length,
@@ -438,23 +345,13 @@ export function Dashboard() {
   const allDeals = getAllDeals();
   const dashboardStats = {
     totalDeals: allDeals.length,
-    activeDeals: allDeals.filter(
-      (deal) =>
-        !["completed"].includes(deal.stage)
-    ).length,
-    completedDeals: allDeals.filter(
-      (deal) => deal.stage === "completed"
-    ).length,
-    totalRevenue: allDeals.reduce(
-      (sum, deal) => sum + deal.value,
-      0
-    ),
+    activeDeals: allDeals.filter((deal) => !['completed'].includes(deal.stage))
+      .length,
+    completedDeals: allDeals.filter((deal) => deal.stage === 'completed')
+      .length,
+    totalRevenue: allDeals.reduce((sum, deal) => sum + deal.value, 0),
     monthlyRevenue: allDeals
-      .filter(
-        (deal) =>
-          deal.createdAt.getMonth() ===
-          new Date().getMonth()
-      )
+      .filter((deal) => deal.createdAt.getMonth() === new Date().getMonth())
       .reduce((sum, deal) => sum + deal.value, 0),
   };
 
@@ -470,9 +367,17 @@ export function Dashboard() {
       />
 
       <div className="p-6 space-y-6">
-        <DashboardStatsBar
-          stats={dashboardStats}
-        />
+        <DashboardStatsBar stats={dashboardStats} />
+
+        {/* Gmail Sync Section */}
+        <div className="max-w-md">
+          <GmailSync
+            onSyncComplete={() => {
+              // Refresh the dashboard after sync
+              window.location.reload();
+            }}
+          />
+        </div>
 
         {/* Kanban Board Container */}
         <Card className="bg-white shadow-sm border border-gray-200">
@@ -485,16 +390,13 @@ export function Dashboard() {
                     Sponsorship Pipeline
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Manage your sponsorship deals
-                    across the entire workflow
+                    Manage your sponsorship deals across the entire workflow
                   </p>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <Button
-                    onClick={() =>
-                      handleAddDeal()
-                    }
+                    onClick={() => handleAddDeal()}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     Add New Deal
@@ -505,9 +407,7 @@ export function Dashboard() {
               {/* Kanban Board with Drag and Drop */}
               <DndContext
                 sensors={sensors}
-                collisionDetection={
-                  closestCorners
-                }
+                collisionDetection={closestCorners}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
@@ -518,29 +418,19 @@ export function Dashboard() {
                     <div
                       className="flex space-x-6 pb-4"
                       style={{
-                        minWidth: "max-content",
+                        minWidth: 'max-content',
                       }}
                     >
-                      {filteredColumns.map(
-                        (column) => (
-                          <KanbanColumnComponent
-                            key={column.id}
-                            column={column}
-                            onAddDeal={
-                              handleAddDeal
-                            }
-                            onEditDeal={
-                              handleEditDeal
-                            }
-                            onMoveDeal={
-                              handleMoveDeal
-                            }
-                            onDeleteDeal={
-                              handleDeleteDeal
-                            }
-                          />
-                        )
-                      )}
+                      {filteredColumns.map((column) => (
+                        <KanbanColumnComponent
+                          key={column.id}
+                          column={column}
+                          onAddDeal={handleAddDeal}
+                          onEditDeal={handleEditDeal}
+                          onMoveDeal={handleMoveDeal}
+                          onDeleteDeal={handleDeleteDeal}
+                        />
+                      ))}
                     </div>
                   </div>
 
@@ -550,9 +440,7 @@ export function Dashboard() {
 
                 {/* Drag Overlay */}
                 <DragOverlay>
-                  {activeDeal ? (
-                    <DealCard deal={activeDeal} />
-                  ) : null}
+                  {activeDeal ? <DealCard deal={activeDeal} /> : null}
                 </DragOverlay>
               </DndContext>
             </div>
@@ -569,14 +457,9 @@ export function Dashboard() {
                   <Checkbox
                     id="select-all"
                     checked={selectAll}
-                    onCheckedChange={
-                      toggleSelectAll
-                    }
+                    onCheckedChange={toggleSelectAll}
                   />
-                  <Label
-                    htmlFor="select-all"
-                    className="text-sm"
-                  >
+                  <Label htmlFor="select-all" className="text-sm">
                     Select All ({totalDeals})
                   </Label>
                 </div>
@@ -589,8 +472,7 @@ export function Dashboard() {
                       onClick={handleBulkMove}
                     >
                       <Move className="h-4 w-4 mr-1" />
-                      Move ({selectedDeals.length}
-                      )
+                      Move ({selectedDeals.length})
                     </Button>
                     <Button
                       variant="outline"
@@ -598,19 +480,15 @@ export function Dashboard() {
                       onClick={handleBulkDelete}
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
-                      Delete (
-                      {selectedDeals.length})
+                      Delete ({selectedDeals.length})
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={
-                        handleExportSelected
-                      }
+                      onClick={handleExportSelected}
                     >
                       <Download className="h-4 w-4 mr-1" />
-                      Export (
-                      {selectedDeals.length})
+                      Export ({selectedDeals.length})
                     </Button>
                   </div>
                 )}
@@ -622,31 +500,16 @@ export function Dashboard() {
                   type="single"
                   value={viewMode}
                   onValueChange={(value) =>
-                    value &&
-                    setViewMode(
-                      value as
-                        | "board"
-                        | "list"
-                        | "calendar"
-                    )
+                    value && setViewMode(value as 'board' | 'list' | 'calendar')
                   }
                 >
-                  <ToggleGroupItem
-                    value="board"
-                    aria-label="Board view"
-                  >
+                  <ToggleGroupItem value="board" aria-label="Board view">
                     <Grid className="h-4 w-4" />
                   </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="list"
-                    aria-label="List view"
-                  >
+                  <ToggleGroupItem value="list" aria-label="List view">
                     <List className="h-4 w-4" />
                   </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="calendar"
-                    aria-label="Calendar view"
-                  >
+                  <ToggleGroupItem value="calendar" aria-label="Calendar view">
                     <Calendar className="h-4 w-4" />
                   </ToggleGroupItem>
                 </ToggleGroup>
@@ -659,27 +522,21 @@ export function Dashboard() {
       {/* Modals */}
       <AddDealModal
         open={isAddDealModalOpen}
-        onClose={() =>
-          setIsAddDealModalOpen(false)
-        }
+        onClose={() => setIsAddDealModalOpen(false)}
         onSubmit={handleCreateDeal}
         initialStage={selectedDealStage}
       />
 
       <MoveDealModal
         open={isMoveDealModalOpen}
-        onClose={() =>
-          setIsMoveDealModalOpen(false)
-        }
+        onClose={() => setIsMoveDealModalOpen(false)}
         onMove={handleMoveDealToStage}
         deal={dealToMove}
       />
 
       <EditDealModal
         open={isEditDealModalOpen}
-        onClose={() =>
-          setIsEditDealModalOpen(false)
-        }
+        onClose={() => setIsEditDealModalOpen(false)}
         onSubmit={handleUpdateDeal}
         deal={dealToEdit}
       />
