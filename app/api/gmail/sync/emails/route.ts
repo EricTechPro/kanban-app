@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { cookies } from 'next/headers';
 import { corsHeaders } from '@/lib/cors';
@@ -22,7 +22,7 @@ export async function OPTIONS() {
   });
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   console.log('=== Gmail Emails Sync Started ===');
 
   try {

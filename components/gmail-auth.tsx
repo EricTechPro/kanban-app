@@ -45,7 +45,6 @@ export function GmailAuth({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [isConnecting, setIsConnecting] = useState(false);
 
   // Clear messages after timeout
   useEffect(() => {
@@ -54,66 +53,6 @@ export function GmailAuth({
       return () => clearTimeout(timer);
     }
   }, [success]);
-
-  const handleConnect = async () => {
-    try {
-      console.log('[GmailAuth] Starting connection process...');
-      setIsConnecting(true);
-      setError(null);
-
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
-      const authUrlEndpoint = `${baseUrl}/api/auth/gmail/auth-url`;
-      console.log('[GmailAuth] Fetching auth URL from:', authUrlEndpoint);
-
-      const response = await fetch(authUrlEndpoint);
-      console.log('[GmailAuth] Auth URL response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[GmailAuth] Failed to get auth URL:', errorText);
-        throw new Error('Failed to get authentication URL');
-      }
-
-      const data = await response.json();
-      console.log('[GmailAuth] Auth URL data:', {
-        hasAuthUrl: !!data.authUrl,
-        demoMode: data.demoMode,
-        redirectUri: data.redirectUri,
-      });
-
-      // Check if we're in demo mode
-      if (data.demoMode) {
-        console.log('[GmailAuth] Demo mode detected');
-        setError(data.message);
-        setIsConnecting(false);
-        return;
-      }
-
-      if (data.authUrl) {
-        console.log('[GmailAuth] Redirecting to Google OAuth...');
-        window.location.href = data.authUrl;
-      } else {
-        console.error('[GmailAuth] No auth URL received');
-        throw new Error('No authentication URL received');
-      }
-    } catch (err) {
-      console.error('[GmailAuth] Connection error:', err);
-      console.error('[GmailAuth] Error details:', {
-        name: err instanceof Error ? err.name : 'Unknown',
-        message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : 'No stack trace',
-      });
-      setError(
-        err instanceof Error ? err.message : 'Failed to connect to Gmail'
-      );
-      setIsConnecting(false);
-    }
-  };
 
   useEffect(() => {
     if (error) {
